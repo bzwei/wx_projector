@@ -2042,6 +2042,14 @@ class MainFrame(wx.Frame):
                 '--disable-features=VizDisplayCompositor',
                 '--no-first-run',
                 '--no-default-browser-check',
+                '--disable-session-crashed-bubble',  # Disable crash recovery dialog
+                '--disable-infobars',  # Disable info bars
+                '--no-crash-upload',  # Don't upload crash reports
+                '--disable-crash-reporter',  # Disable crash reporter
+                '--disable-background-mode',  # Don't run in background
+                '--disable-background-timer-throttling',  # Disable background throttling
+                '--disable-restore-session-state',  # Don't restore session
+                '--disable-translate',  # Disable translate bars
                 url
             ]
             
@@ -2124,6 +2132,14 @@ class MainFrame(wx.Frame):
                     '--disable-features=VizDisplayCompositor',
                     '--no-first-run',
                     '--no-default-browser-check',
+                    '--disable-session-crashed-bubble',  # Disable crash recovery dialog
+                    '--disable-infobars',  # Disable info bars
+                    '--no-crash-upload',  # Don't upload crash reports
+                    '--disable-crash-reporter',  # Disable crash reporter
+                    '--disable-background-mode',  # Don't run in background
+                    '--disable-background-timer-throttling',  # Disable background throttling
+                    '--disable-restore-session-state',  # Don't restore session
+                    '--disable-translate',  # Disable translate bars
                     url
                 ]
                 
