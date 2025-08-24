@@ -1792,8 +1792,22 @@ class MainFrame(wx.Frame):
         if slides_input.upper() in self.hymns_data:
             # It's a hymn ID, get the Google Slides ID
             google_slides_id = self.hymns_data[slides_input.upper()]
-            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/embed?start=false&loop=false&delayms=3000"
+            
+            # For public presentations, use the most reliable format
+            # Try preview format first (works better for public presentations)
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/preview"
+            
             print(f"Loading hymn {slides_input} -> {google_slides_id}")
+            print(f"Using URL: {presentation_url}")
+            
+            # Debug: Test the URL format by opening it in a browser first
+            # Uncomment the next line to test the URL in your default browser:
+            # import webbrowser; webbrowser.open(presentation_url)
+            
+            # Debug: Print the exact hymn data for verification
+            print(f"Hymn data loaded: {len(self.hymns_data)} hymns")
+            if slides_input.upper() in self.hymns_data:
+                print(f"Found hymn {slides_input.upper()} with slides ID: {self.hymns_data[slides_input.upper()]}")
         elif self.is_google_slides_id(slides_input):
             # It's a Google Slides ID or URL
             if 'docs.google.com/presentation' in slides_input:
@@ -1809,16 +1823,94 @@ class MainFrame(wx.Frame):
                 # Assume it's a direct ID
                 google_slides_id = slides_input
                 
-            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/embed?start=false&loop=false&delayms=3000"
+            # For public presentations, use the most reliable format
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/preview"
+            print(f"Using direct slides ID: {google_slides_id}")
+            print(f"Using URL: {presentation_url}")
         else:
             wx.MessageBox("Invalid input. Please enter a hymn ID (123, A123, C456) or Google Slides ID/URL", "Error", wx.OK | wx.ICON_ERROR)
             return
             
-        # Always start new projection (reload content)
-        self.start_slides_projection(presentation_url)
+        # Start projection directly with simplified approach
+        self.start_slides_projection_simple(presentation_url, google_slides_id)
+    
+    def start_slides_projection_simple(self, url, presentation_id):
+        """Start slides projection with simple fallback for public presentations"""
+        # Store fallback URLs for public presentations
+        self.slides_fallback_urls = [
+            f"https://docs.google.com/presentation/d/{presentation_id}/embed?start=false&loop=false&delayms=3000",
+            f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
+            f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
+        ]
+        
+        # Start with the provided URL
+        self.start_slides_projection(url)
+    
+    def test_and_start_slides_projection(self, url, presentation_id):
+        """Test URL accessibility and start projection with best format"""
+        import threading
+        
+        def test_url_thread():
+            """Test URL accessibility in background thread"""
+            try:
+                import urllib.request
+                import urllib.error
+                
+                # Test different URL formats to find the best one
+                test_urls = [
+                    url,  # Original embed URL
+                    f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
+                    f"https://docs.google.com/presentation/d/{presentation_id}/preview",
+                    f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
+                ]
+                
+                working_url = None
+                for test_url in test_urls:
+                    try:
+                        print(f"Testing URL: {test_url}")
+                        req = urllib.request.Request(test_url, headers={'User-Agent': 'Mozilla/5.0'})
+                        response = urllib.request.urlopen(req, timeout=10)
+                        
+                        # Check if we get redirected to account help (sign-in required)
+                        final_url = response.geturl()
+                        if 'accounts.google.com' in final_url or 'signin' in final_url.lower():
+                            print(f"URL requires sign-in: {test_url}")
+                            continue
+                        
+                        # Check response content for signs of success
+                        content = response.read(1024).decode('utf-8', errors='ignore')
+                        if 'presentation' in content.lower() or 'slides' in content.lower():
+                            working_url = test_url
+                            print(f"Found working URL: {working_url}")
+                            break
+                            
+                    except Exception as e:
+                        print(f"URL test failed for {test_url}: {e}")
+                        continue
+                
+                # Call the UI thread to start projection
+                wx.CallAfter(self.start_slides_with_tested_url, working_url or url)
+                
+            except Exception as e:
+                print(f"URL testing error: {e}")
+                # Fallback to original URL
+                wx.CallAfter(self.start_slides_with_tested_url, url)
+        
+        # Show testing status
+        self.status_text.SetLabel("Testing presentation accessibility...")
+        self.status_text.SetForegroundColour(wx.Colour(52, 152, 219))
+        
+        # Start test in background thread
+        test_thread = threading.Thread(target=test_url_thread, daemon=True)
+        test_thread.start()
+    
+    def start_slides_with_tested_url(self, url):
+        """Start slides projection with tested URL"""
+        print(f"Starting projection with tested URL: {url}")
+        self.start_slides_projection(url)
         
     def start_slides_projection(self, url):
-        """Start projecting slides to second screen"""
+        """Start projecting slides to second screen with fallback URLs"""
         try:
             # Hide any existing projections to avoid conflicts
             if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
@@ -1838,6 +1930,25 @@ class MainFrame(wx.Frame):
             target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
             
             print(f"Starting slides projection: {url}")
+            
+            # Extract presentation ID from URL for alternative formats
+            presentation_id = None
+            if '/presentation/d/' in url:
+                import re
+                match = re.search(r'/presentation/d/([a-zA-Z0-9-_]+)', url)
+                if match:
+                    presentation_id = match.group(1)
+            
+            # Store alternative URLs to try if the first one fails
+            self.slides_fallback_urls = []
+            if presentation_id:
+                # Alternative URL formats to try
+                self.slides_fallback_urls = [
+                    f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
+                    f"https://docs.google.com/presentation/d/{presentation_id}/preview",
+                    f"https://docs.google.com/presentation/d/{presentation_id}/edit?usp=sharing",
+                    f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
+                ]
             
             # Update status immediately
             self.status_text.SetLabel("Creating slides projection...")
@@ -1868,15 +1979,50 @@ class MainFrame(wx.Frame):
         self.update_all_projection_buttons()
         
     def on_slides_projection_error(self, error_msg):
-        """Called when slides projection fails"""
-        self.status_text.SetLabel("Slides projection failed")
+        """Called when slides projection fails - try fallback URLs"""
+        print(f"Slides projection error: {error_msg}")
+        
+        # Try fallback URLs if available
+        if hasattr(self, 'slides_fallback_urls') and self.slides_fallback_urls:
+            fallback_url = self.slides_fallback_urls.pop(0)  # Get next URL to try
+            print(f"Trying fallback URL: {fallback_url}")
+            
+            self.status_text.SetLabel("Trying alternative URL format...")
+            self.status_text.SetForegroundColour(wx.Colour(243, 156, 18))  # Orange
+            
+            # Destroy current frame and try with fallback URL
+            if self.slides_projection_frame:
+                self.slides_projection_frame.Destroy()
+                self.slides_projection_frame = None
+            
+            # Get target monitor
+            monitors = get_monitors()
+            target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+            
+            # Create new projection with fallback URL
+            self.slides_projection_frame = ProjectionFrame(self, fallback_url, target_monitor, "slides")
+            return
+        
+        # No more fallback URLs, show error
+        self.status_text.SetLabel("Slides projection failed - check presentation permissions")
         self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
         
         # Reset button
         if hasattr(self, 'slides_btn'):
             self.slides_btn.Enable(True)
         
-        wx.MessageBox(f"Slides projection failed:\n{error_msg}", "Error", wx.OK | wx.ICON_ERROR)
+        # Show simplified error message for public presentations
+        error_details = f"""Slides projection failed: {error_msg}
+
+Possible solutions:
+1. Check your internet connection
+2. Verify the presentation ID is correct
+3. Try entering the full Google Slides URL instead of just the ID
+4. The presentation might be temporarily unavailable
+
+If the problem persists, the presentation ID might be incorrect or the presentation might have been moved/deleted."""
+        
+        wx.MessageBox(error_details, "Slides Projection Error", wx.OK | wx.ICON_ERROR)
         
     def stop_slides_projection(self):
         """Stop the slides projection"""
