@@ -347,6 +347,10 @@ class MainFrame(wx.Frame):
         self.hymn_chrome_process = None  # For hymn projection
         self.agenda_chrome_process = None  # For agenda projection
         
+        # Chrome window visibility states
+        self.hymn_chrome_visible = False
+        self.agenda_chrome_visible = False
+        
         # Bind close event to clean up Chrome processes
         self.Bind(wx.EVT_CLOSE, self.on_main_window_close)
         
@@ -1910,10 +1914,24 @@ class MainFrame(wx.Frame):
             wx.MessageBox("Invalid input. Please enter a hymn ID (123, A123, C456) or Google Slides ID/URL", "Error", wx.OK | wx.ICON_ERROR)
             return
             
+        # Check if hymn Chrome is already running and visible - implement toggle
+        if self.hymn_chrome_process and self.hymn_chrome_process.poll() is None:
+            if self.hymn_chrome_visible:
+                # Currently visible, hide it
+                print("Hiding current hymn projection")
+                self.hide_chrome_window(self.hymn_chrome_process)
+                self.hymn_chrome_visible = False
+                self.status_text.SetLabel("Hymn projection hidden")
+                self.status_text.SetForegroundColour(wx.Colour(243, 156, 18))  # Orange
+                return
+            else:
+                # Currently hidden, show it (but first load new hymn)
+                print("Showing hymn projection with new hymn")
+        
         # Skip WebView entirely for hymns - go straight to Chrome
         print("Skipping WebView for hymns - launching Chrome directly")
         # Use manual control (no auto-start) and present mode for manual navigation
-        chrome_url = f"https://docs.google.com/presentation/d/{google_slides_id}/present?start=false&loop=false&delayms=3000"
+        chrome_url = f"https://docs.google.com/presentation/d/{google_slides_id}/present?start=false&loop=false"
         
         try:
             self.current_presentation_id = google_slides_id
@@ -2088,18 +2106,94 @@ class MainFrame(wx.Frame):
                 print("❌ Chrome browser not found in any standard location")
                 raise Exception("Chrome browser not found")
             
-            # Update status
+            # Update status and visibility
             self.is_projecting_slides = True
+            self.hymn_chrome_visible = True
             self.status_text.SetLabel("✓ Hymn projection active in Chrome browser")
             self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
             if hasattr(self, 'slides_btn'):
                 self.slides_btn.Enable(True)
+            
+            # Hide other projections (mutual exclusion)
+            self.hide_other_projections(exclude='hymn')
             self.update_all_projection_buttons()
             print("Hymn Chrome projection setup complete")
                 
         except Exception as e:
             print(f"Hymn Chrome launch failed: {e}")
             raise e
+
+    def hide_other_projections(self, exclude=None):
+        """Hide all projections except the specified one"""
+        if exclude != 'hymn' and self.hymn_chrome_process and self.hymn_chrome_visible:
+            self.hide_chrome_window(self.hymn_chrome_process)
+            self.hymn_chrome_visible = False
+            
+        if exclude != 'agenda' and self.agenda_chrome_process and self.agenda_chrome_visible:
+            self.hide_chrome_window(self.agenda_chrome_process)
+            self.agenda_chrome_visible = False
+            
+        if exclude != 'bible' and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
+            self.hide_bible_projection(auto_hide=True)
+            
+        if exclude != 'web' and self.projection_frame and not self.projection_frame.is_hidden:
+            self.hide_projection(auto_hide=True)
+
+    def hide_chrome_window(self, chrome_process):
+        """Hide Chrome window using Windows API"""
+        if not HAS_PYWIN32 or not chrome_process:
+            return
+            
+        try:
+            import time
+            time.sleep(0.2)  # Give Chrome time to fully load
+            
+            # Find Chrome window by process ID
+            def enum_windows_callback(hwnd, windows):
+                if win32gui.IsWindowVisible(hwnd):
+                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                    if pid == chrome_process.pid:
+                        window_title = win32gui.GetWindowText(hwnd)
+                        if window_title:  # Only consider windows with titles
+                            windows.append(hwnd)
+                return True
+            
+            windows = []
+            win32gui.EnumWindows(enum_windows_callback, windows)
+            
+            for hwnd in windows:
+                win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+                print(f"Hidden Chrome window: {hwnd}")
+                
+        except Exception as e:
+            print(f"Error hiding Chrome window: {e}")
+
+    def show_chrome_window(self, chrome_process):
+        """Show Chrome window using Windows API"""
+        if not HAS_PYWIN32 or not chrome_process:
+            return
+            
+        try:
+            import time
+            time.sleep(0.2)  # Give Chrome time to fully load
+            
+            # Find Chrome window by process ID
+            def enum_windows_callback(hwnd, windows):
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                if pid == chrome_process.pid:
+                    windows.append(hwnd)
+                return True
+            
+            windows = []
+            win32gui.EnumWindows(enum_windows_callback, windows)
+            
+            for hwnd in windows:
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+                win32gui.SetForegroundWindow(hwnd)
+                print(f"Shown Chrome window: {hwnd}")
+                
+        except Exception as e:
+            print(f"Error showing Chrome window: {e}")
 
     def launch_chrome_for_agenda(self, url):
         """Launch Chrome browser for agenda projection in separate window"""
@@ -2185,6 +2279,10 @@ class MainFrame(wx.Frame):
                     print("❌ Chrome browser not found in any standard location")
                     raise Exception("Chrome browser not found")
             
+            # Update visibility state
+            self.agenda_chrome_visible = True
+            # Hide other projections (mutual exclusion)
+            self.hide_other_projections(exclude='agenda')
             print("Agenda Chrome projection setup complete")
                 
         except Exception as e:
@@ -2527,14 +2625,27 @@ This appears to be a Google Slides embedding restriction. The presentation works
     
     def on_agenda_button_click(self, event):
         """Handle agenda button click - toggle show/hide agenda"""
-        if self.is_projecting_agenda and self.agenda_projection_frame:
-            # Agenda is currently active, check if hidden or visible
-            if self.agenda_projection_frame.is_hidden:
-                # Currently hidden, show it
-                self.show_agenda_projection()
-            else:
+        # Check if agenda Chrome is already running - implement toggle
+        if self.agenda_chrome_process and self.agenda_chrome_process.poll() is None:
+            if self.agenda_chrome_visible:
                 # Currently visible, hide it
-                self.hide_agenda_projection()
+                print("Hiding agenda projection")
+                self.hide_chrome_window(self.agenda_chrome_process)
+                self.agenda_chrome_visible = False
+                self.is_projecting_agenda = False
+                self.status_text.SetLabel("Agenda projection hidden")
+                self.status_text.SetForegroundColour(wx.Colour(243, 156, 18))  # Orange
+                return
+            else:
+                # Currently hidden, show it
+                print("Showing agenda projection")
+                self.show_chrome_window(self.agenda_chrome_process)
+                self.agenda_chrome_visible = True
+                self.is_projecting_agenda = True
+                self.hide_other_projections(exclude='agenda')
+                self.status_text.SetLabel("✓ Agenda projection visible")
+                self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+                return
         else:
             # Start agenda projection for the first time
             self.start_agenda_projection()
@@ -2552,7 +2663,7 @@ This appears to be a Google Slides embedding restriction. The presentation works
                 
             # Use Chrome for agenda projection (manual control, no auto-start)
             agenda_presentation_id = "16z_afMCpHY1WzO3aJ_M-bfn-fdNTzKaejovlC_oBFUk"
-            agenda_url = f"https://docs.google.com/presentation/d/{agenda_presentation_id}/present?start=false&loop=false&delayms=3000"
+            agenda_url = f"https://docs.google.com/presentation/d/{agenda_presentation_id}/present?start=false&loop=false"
             
             print(f"Starting agenda projection in Chrome: {agenda_url}")
             
