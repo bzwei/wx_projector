@@ -453,10 +453,10 @@ class MainFrame(wx.Frame):
         slides_row_sizer.Add(self.agenda_btn, 0, 0)
         slides_sizer.Add(slides_row_sizer, 0, wx.EXPAND | wx.ALL, 10)
         
-        # Example text for slides
-        slides_example = wx.StaticText(panel, label="Examples: 16z_afMCpHY1WzO3aJ_M-bfn-fdNTzKaejovlC_oBFUk, 101, 203")
-        slides_example.SetForegroundColour(wx.Colour(127, 140, 141))
-        slides_sizer.Add(slides_example, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        # Status text for current selection
+        self.slides_status = wx.StaticText(panel, label="Enter hymn ID (123, A123, C456) or Google Slides ID/URL")
+        self.slides_status.SetForegroundColour(wx.Colour(127, 140, 141))
+        slides_sizer.Add(self.slides_status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
         
         main_sizer.Add(slides_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 30)
         
@@ -472,22 +472,28 @@ class MainFrame(wx.Frame):
         versions_label.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
         version_font_row_sizer.Add(versions_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         
+        # Bible versions dictionary
+        self.bible_versions = {
+            'cuv': '和合本',
+            'kjv': 'KJV',
+            'nas': 'NAS', 
+            'niv': 'NIV',
+            'dby': 'Darby'
+        }
+        
         # Create checkboxes for Bible versions
-        self.cuv_checkbox = wx.CheckBox(panel, label="CUV (中文)")
-        self.cuv_checkbox.SetValue(True)  # Default to checked
-        self.cuv_checkbox.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
-        self.cuv_checkbox.Bind(wx.EVT_CHECKBOX, self.on_version_checkbox_change)
-        version_font_row_sizer.Add(self.cuv_checkbox, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
-        
-        self.niv_checkbox = wx.CheckBox(panel, label="NIV")
-        self.niv_checkbox.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
-        self.niv_checkbox.Bind(wx.EVT_CHECKBOX, self.on_version_checkbox_change)
-        version_font_row_sizer.Add(self.niv_checkbox, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
-        
-        self.esv_checkbox = wx.CheckBox(panel, label="ESV")
-        self.esv_checkbox.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
-        self.esv_checkbox.Bind(wx.EVT_CHECKBOX, self.on_version_checkbox_change)
-        version_font_row_sizer.Add(self.esv_checkbox, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 20)
+        self.version_checkboxes = {}
+        for version_key, version_name in self.bible_versions.items():
+            checkbox = wx.CheckBox(panel, label=version_name)
+            if version_key == 'cuv':  # Default to CUV selected
+                checkbox.SetValue(True)
+            checkbox.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            checkbox.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
+            checkbox.SetBackgroundColour(wx.Colour(255, 255, 255))  # White background
+            checkbox.Refresh()  # Force refresh to apply colors
+            checkbox.Bind(wx.EVT_CHECKBOX, self.on_version_checkbox_change)
+            self.version_checkboxes[version_key] = checkbox
+            version_font_row_sizer.Add(checkbox, 0, wx.RIGHT, 15)
         
         # Vertical separator
         separator = wx.StaticLine(panel, style=wx.LI_VERTICAL, size=(2, 30))
@@ -535,23 +541,33 @@ class MainFrame(wx.Frame):
         self.bible_ctrl.Bind(wx.EVT_TEXT, self.on_bible_text_change)
         self.bible_ctrl.Bind(wx.EVT_TEXT_ENTER, self.on_bible_button_click)
         self.bible_ctrl.Bind(wx.EVT_KEY_DOWN, self.on_bible_key_down)
+
+        # Clear button for bible text
+        self.bible_clear_btn = wx.Button(panel, label="×", size=(25, 36))
+        self.bible_clear_btn.SetToolTip("Clear bible verse input")
+        self.bible_clear_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.bible_clear_btn.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
+        self.bible_clear_btn.SetBackgroundColour(wx.Colour(240, 240, 240))  # Light gray background
+        self.bible_clear_btn.Refresh()
+        self.bible_clear_btn.Bind(wx.EVT_BUTTON, self.on_bible_clear_click)
         
-        # Preview button
-        self.bible_preview_btn = buttons.GenButton(panel, label="👁")
-        self.bible_preview_btn.SetBackgroundColour(wx.Colour(127, 140, 141))  # Gray
-        self.bible_preview_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.bible_preview_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.bible_preview_btn.SetSize((40, 36))
+        # Preview button for bible text
+        self.bible_preview_btn = wx.Button(panel, label="👁", size=(30, 36))
         self.bible_preview_btn.SetToolTip("Preview chapter")
+        self.bible_preview_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        self.bible_preview_btn.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
+        self.bible_preview_btn.SetBackgroundColour(wx.Colour(240, 240, 240))  # Light gray background
+        self.bible_preview_btn.Refresh()
         self.bible_preview_btn.Bind(wx.EVT_BUTTON, self.on_bible_preview_click)
         
-        # History button
-        self.bible_history_btn = buttons.GenButton(panel, label="📜")
-        self.bible_history_btn.SetBackgroundColour(wx.Colour(127, 140, 141))  # Gray
-        self.bible_history_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.bible_history_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.bible_history_btn.SetSize((40, 36))
-        self.bible_history_btn.SetToolTip("Bible history")
+        # History button for bible projections
+        self.bible_history_btn = wx.Button(panel, label="📜", size=(30, 36))
+        self.bible_history_btn.SetToolTip("Projection history")
+        self.bible_history_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        self.bible_history_btn.SetForegroundColour(wx.Colour(0, 0, 0))  # Black text
+        self.bible_history_btn.SetBackgroundColour(wx.Colour(240, 240, 240))  # Light gray background
+        self.bible_history_btn.Enable(False)  # Initially disabled until there's history
+        self.bible_history_btn.Refresh()
         self.bible_history_btn.Bind(wx.EVT_BUTTON, self.on_bible_history_click)
         
         # Project button
@@ -571,129 +587,104 @@ class MainFrame(wx.Frame):
         self.bible_toggle_btn.Enable(False)
         self.bible_toggle_btn.Bind(wx.EVT_BUTTON, self.on_bible_toggle_click)
         
-        bible_row_sizer.Add(self.bible_ctrl, 1, wx.EXPAND | wx.RIGHT, 5)
+        # Previous verse navigation button
+        self.prev_verse_btn = wx.Button(panel, label="◀", size=(30, 36))
+        self.prev_verse_btn.SetToolTip("Previous verse")
+        self.prev_verse_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.prev_verse_btn.SetForegroundColour(wx.Colour(0, 0, 0))
+        self.prev_verse_btn.SetBackgroundColour(wx.Colour(200, 200, 200))
+        self.prev_verse_btn.Enable(False)  # Initially disabled
+        self.prev_verse_btn.Bind(wx.EVT_BUTTON, self.on_prev_verse_click)
+        
+        # Next verse navigation button
+        self.next_verse_btn = wx.Button(panel, label="▶", size=(30, 36))
+        self.next_verse_btn.SetToolTip("Next verse")
+        self.next_verse_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.next_verse_btn.SetForegroundColour(wx.Colour(0, 0, 0))
+        self.next_verse_btn.SetBackgroundColour(wx.Colour(200, 200, 200))
+        self.next_verse_btn.Enable(False)  # Initially disabled
+        self.next_verse_btn.Bind(wx.EVT_BUTTON, self.on_next_verse_click)
+        
+        bible_row_sizer.Add(self.bible_ctrl, 1, wx.EXPAND | wx.RIGHT, 2)
+        bible_row_sizer.Add(self.bible_clear_btn, 0, wx.RIGHT, 2)
         bible_row_sizer.Add(self.bible_preview_btn, 0, wx.RIGHT, 5)
         bible_row_sizer.Add(self.bible_history_btn, 0, wx.RIGHT, 5)
         bible_row_sizer.Add(self.bible_btn, 0, wx.RIGHT, 5)
-        bible_row_sizer.Add(self.bible_toggle_btn, 0, 0)
+        bible_row_sizer.Add(self.bible_toggle_btn, 0, wx.RIGHT, 5)
+        bible_row_sizer.Add(self.prev_verse_btn, 0, wx.RIGHT, 2)
+        bible_row_sizer.Add(self.next_verse_btn, 0, 0)
         bible_sizer.Add(bible_row_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
         
-        # Verse navigation controls
-        nav_row_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # Status text for bible input
+        self.bible_status = wx.StaticText(panel, label="Enter book name and verse - 1 version selected: 和合本")
+        self.bible_status.SetForegroundColour(wx.Colour(127, 140, 141))
+        bible_sizer.Add(self.bible_status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
         
-        # Previous verse button
-        self.prev_verse_btn = buttons.GenButton(panel, label="◀ Prev Verse")
-        self.prev_verse_btn.SetBackgroundColour(wx.Colour(127, 140, 141))
-        self.prev_verse_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.prev_verse_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.prev_verse_btn.SetSize((100, 30))
-        self.prev_verse_btn.Enable(False)
-        self.prev_verse_btn.Bind(wx.EVT_BUTTON, self.on_prev_verse_click)
+        # Bible preview area with chapter navigation
+        self.bible_preview_panel = wx.Panel(panel)
+        self.bible_preview_panel.SetBackgroundColour(wx.Colour(250, 250, 250))  # Very light gray
         
-        # Next verse button
-        self.next_verse_btn = buttons.GenButton(panel, label="Next Verse ▶")
-        self.next_verse_btn.SetBackgroundColour(wx.Colour(127, 140, 141))
-        self.next_verse_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.next_verse_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.next_verse_btn.SetSize((100, 30))
-        self.next_verse_btn.Enable(False)
-        self.next_verse_btn.Bind(wx.EVT_BUTTON, self.on_next_verse_click)
+        preview_sizer = wx.BoxSizer(wx.VERTICAL)
         
-        # Clear button
-        self.bible_clear_btn = buttons.GenButton(panel, label="❌")
-        self.bible_clear_btn.SetBackgroundColour(wx.Colour(231, 76, 60))  # Red
-        self.bible_clear_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.bible_clear_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.bible_clear_btn.SetSize((30, 30))
-        self.bible_clear_btn.SetToolTip("Clear input")
-        self.bible_clear_btn.Bind(wx.EVT_BUTTON, self.on_bible_clear_click)
+        # Preview header with navigation buttons
+        header_sizer = wx.BoxSizer(wx.HORIZONTAL)
         
-        nav_row_sizer.Add(self.prev_verse_btn, 0, wx.RIGHT, 5)
-        nav_row_sizer.Add(self.next_verse_btn, 0, wx.RIGHT, 10)
-        nav_row_sizer.AddStretchSpacer()
-        nav_row_sizer.Add(self.bible_clear_btn, 0, 0)
-        bible_sizer.Add(nav_row_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        # Left arrow button
+        self.prev_chapter_btn = wx.Button(self.bible_preview_panel, label="◀", size=(30, 25))
+        self.prev_chapter_btn.SetToolTip("Previous chapter")
+        self.prev_chapter_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.prev_chapter_btn.SetForegroundColour(wx.Colour(0, 0, 0))
+        self.prev_chapter_btn.SetBackgroundColour(wx.Colour(220, 220, 220))
+        self.prev_chapter_btn.Enable(False)  # Initially disabled
+        self.prev_chapter_btn.Bind(wx.EVT_BUTTON, self.on_prev_chapter_click)
         
-        # Bible example text
-        bible_example = wx.StaticText(panel, label="Examples: John 3:16, Genesis 1, Psalm 23:1-3, Matthew 5")
-        bible_example.SetForegroundColour(wx.Colour(127, 140, 141))
-        bible_sizer.Add(bible_example, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        # Preview header text
+        self.preview_header = wx.StaticText(self.bible_preview_panel, label="Chapter Preview (empty - click 👁 to load):")
+        self.preview_header.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.preview_header.SetForegroundColour(wx.Colour(60, 60, 60))
+        
+        # Right arrow button
+        self.next_chapter_btn = wx.Button(self.bible_preview_panel, label="▶", size=(30, 25))
+        self.next_chapter_btn.SetToolTip("Next chapter")
+        self.next_chapter_btn.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.next_chapter_btn.SetForegroundColour(wx.Colour(0, 0, 0))
+        self.next_chapter_btn.SetBackgroundColour(wx.Colour(220, 220, 220))
+        self.next_chapter_btn.Enable(False)  # Initially disabled
+        self.next_chapter_btn.Bind(wx.EVT_BUTTON, self.on_next_chapter_click)
+        
+        header_sizer.Add(self.prev_chapter_btn, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 5)
+        header_sizer.Add(self.preview_header, 1, wx.ALIGN_CENTER_VERTICAL)
+        header_sizer.Add(self.next_chapter_btn, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+        
+        preview_sizer.Add(header_sizer, 0, wx.EXPAND | wx.ALL, 5)
+        
+        # Scrolled panel for verses
+        self.bible_preview_scroll = wx.ScrolledWindow(self.bible_preview_panel, size=(-1, 250))
+        self.bible_preview_scroll.SetScrollRate(5, 5)
+        self.bible_preview_scroll.SetBackgroundColour(wx.Colour(255, 255, 255))
+        
+        # Sizer for verse rows (will be populated dynamically)
+        self.bible_verses_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.bible_preview_scroll.SetSizer(self.bible_verses_sizer)
+        
+        preview_sizer.Add(self.bible_preview_scroll, 1, wx.EXPAND | wx.ALL, 5)
+        
+        self.bible_preview_panel.SetSizer(preview_sizer)
+        bible_sizer.Add(self.bible_preview_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+        
+        # Autocomplete popup for bible books
+        self.bible_popup = None
         
         main_sizer.Add(bible_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 30)
         
-        # Bible preview section - always visible
-        preview_box = wx.StaticBox(panel, label="Bible Chapter Preview:")
-        preview_sizer = wx.StaticBoxSizer(preview_box, wx.VERTICAL)
-        
-        # Chapter navigation
-        chapter_nav_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        self.prev_chapter_btn = buttons.GenButton(panel, label="◀")
-        self.prev_chapter_btn.SetBackgroundColour(wx.Colour(127, 140, 141))
-        self.prev_chapter_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.prev_chapter_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.prev_chapter_btn.SetSize((30, 30))
-        self.prev_chapter_btn.Enable(False)
-        self.prev_chapter_btn.Bind(wx.EVT_BUTTON, self.on_prev_chapter_click)
-        
-        self.chapter_label = wx.StaticText(panel, label="No chapter selected")
-        self.chapter_label.SetForegroundColour(wx.Colour(44, 62, 80))
-        chapter_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-        self.chapter_label.SetFont(chapter_font)
-        
-        self.next_chapter_btn = buttons.GenButton(panel, label="▶")
-        self.next_chapter_btn.SetBackgroundColour(wx.Colour(127, 140, 141))
-        self.next_chapter_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.next_chapter_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.next_chapter_btn.SetSize((30, 30))
-        self.next_chapter_btn.Enable(False)
-        self.next_chapter_btn.Bind(wx.EVT_BUTTON, self.on_next_chapter_click)
-        
-        chapter_nav_sizer.Add(self.prev_chapter_btn, 0, wx.RIGHT, 10)
-        chapter_nav_sizer.Add(self.chapter_label, 1, wx.ALIGN_CENTER_VERTICAL)
-        chapter_nav_sizer.Add(self.next_chapter_btn, 0, wx.LEFT, 10)
-        
-        preview_sizer.Add(chapter_nav_sizer, 0, wx.EXPAND | wx.ALL, 5)
-        
-        # Preview content area
-        preview_content_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        # Verse buttons panel (scrollable)
-        self.verse_buttons_panel = wx.ScrolledWindow(panel, size=(150, 280))
-        self.verse_buttons_panel.SetScrollRate(5, 5)
-        self.verse_buttons_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
-        
-        # Verse text area
-        self.preview_text = wx.TextCtrl(
-            panel, 
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
-            size=(400, 280)
-        )
-        preview_text_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-        self.preview_text.SetFont(preview_text_font)
-        self.preview_text.SetForegroundColour(wx.Colour(0, 0, 0))
-        self.preview_text.SetBackgroundColour(wx.Colour(255, 255, 255))
-        
-        preview_content_sizer.Add(self.verse_buttons_panel, 0, wx.EXPAND | wx.RIGHT, 5)
-        preview_content_sizer.Add(self.preview_text, 1, wx.EXPAND)
-        
-        preview_sizer.Add(preview_content_sizer, 1, wx.EXPAND | wx.ALL, 5)
-        
-        main_sizer.Add(preview_sizer, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 30)
-        
-        # Status and monitor info
-        status_box = wx.StaticBox(panel, label="Status & Monitor Info:")
-        status_sizer = wx.StaticBoxSizer(status_box, wx.VERTICAL)
-        
+        # Status
         self.status_text = wx.StaticText(panel, label="Ready to project")
         self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
-        status_sizer.Add(self.status_text, 0, wx.ALL, 5)
+        main_sizer.Add(self.status_text, 0, wx.ALL | wx.CENTER, 10)
         
-        self.monitor_text = wx.StaticText(panel, label="Detecting monitors...")
-        self.monitor_text.SetForegroundColour(wx.Colour(44, 62, 80))
-        status_sizer.Add(self.monitor_text, 0, wx.ALL, 5)
-        
-        main_sizer.Add(status_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 30)
+        # Monitor info (will be updated in update_monitor_info)
+        self.monitor_text = wx.StaticText(panel, label="")
+        main_sizer.Add(self.monitor_text, 0, wx.ALL | wx.CENTER, 5)
         
         panel.SetSizer(main_sizer)
         
@@ -701,8 +692,56 @@ class MainFrame(wx.Frame):
         self.bible_popup = None
         self.bible_list = None
         
-        # Apply color fixes for Windows
+        # Set focus to URL input
+        self.url_ctrl.SetFocus()
+        
+        # Force color updates after layout (Windows compatibility)
         wx.CallAfter(self.force_color_updates)
+        
+        # Force layout refresh for choice controls
+        wx.CallAfter(self.refresh_choice_sizing)
+        
+    def refresh_choice_sizing(self):
+        """Force proper sizing for choice controls (Windows compatibility)"""
+        try:
+            # Force layout refresh for font choice controls
+            self.chinese_font_choice.SetMinSize((60, 30))
+            self.english_font_choice.SetMinSize((60, 30))
+            
+            # Force the parent panel to re-layout
+            self.Layout()
+            self.Refresh()
+            
+        except Exception as e:
+            print(f"Error refreshing choice sizing: {e}")
+         
+    def force_color_updates(self):
+        """Force color updates on all controls for better visibility (explicitly black on white)"""
+        try:
+            # Use explicit black on white colors as preferred
+            text_color = wx.Colour(0, 0, 0)  # Black text
+            bg_color = wx.Colour(255, 255, 255)  # White background
+            
+            # Fix text input controls
+            for ctrl in [self.url_ctrl, self.slides_ctrl, self.bible_ctrl]:
+                ctrl.SetForegroundColour(text_color)
+                ctrl.SetBackgroundColour(bg_color)
+                ctrl.Refresh()
+                
+            # Fix checkboxes - explicitly black text
+            for checkbox in self.version_checkboxes.values():
+                checkbox.SetForegroundColour(text_color)
+                checkbox.SetBackgroundColour(wx.Colour(248, 248, 248))  # Very light gray
+                checkbox.Refresh()
+                
+            # Fix choice controls
+            for choice in [self.chinese_font_choice, self.english_font_choice]:
+                choice.SetForegroundColour(text_color)
+                choice.SetBackgroundColour(bg_color)
+                choice.Refresh()
+                
+        except Exception as e:
+            print(f"Error in force_color_updates: {e}")
         
     def update_all_projection_buttons(self):
         """Update all projection button states based on current projection status"""
@@ -843,31 +882,42 @@ class MainFrame(wx.Frame):
             pass
 
     def load_hymns_data(self):
-        """Load hymns data from CSV file"""
+        """Load hymns data from CSV file - ID based lookup"""
+        csv_path = os.path.join(os.getcwd(), "hymns.csv")
         try:
-            csv_path = os.path.join(os.path.dirname(__file__), "hymns.csv")
-            
-            if not os.path.exists(csv_path):
-                return
-            
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    hymn_id = row.get('ID', '').strip()
-                    title = row.get('Title', '').strip()
+            if os.path.exists(csv_path):
+                with open(csv_path, 'r', encoding='utf-8') as file:
+                    reader = csv.reader(file)
+                    # Check if first row is header and skip if needed
+                    first_row = next(reader, None)
+                    if first_row and not (first_row[0].isdigit() or 
+                                        (first_row[0].startswith(('A', 'C')) and first_row[0][1:].isdigit())):
+                        # Looks like header, continue reading
+                        pass
+                    else:
+                        # First row is data, process it
+                        if first_row and len(first_row) >= 2:
+                            hymn_id = first_row[0].strip()
+                            slides_id = first_row[1].strip()
+                            if hymn_id and slides_id:
+                                # Store with uppercase key for case-insensitive lookup
+                                self.hymns_data[hymn_id.upper()] = slides_id
+                                self.hymns_ids.append(hymn_id)  # Keep original case for display
                     
-                    if hymn_id and title:
-                        self.hymns_data[hymn_id] = {
-                            'title': title,
-                            'id': hymn_id
-                        }
-                        self.hymns_ids.append(hymn_id)
-            
-            # Sort hymns by ID (numeric)
-            self.hymns_ids.sort(key=lambda x: int(x) if x.isdigit() else 999999)
-            
+                    # Process remaining rows
+                    for row in reader:
+                        if len(row) >= 2:
+                            hymn_id = row[0].strip()
+                            slides_id = row[1].strip()
+                            if hymn_id and slides_id:
+                                # Store with uppercase key for case-insensitive lookup
+                                self.hymns_data[hymn_id.upper()] = slides_id
+                                self.hymns_ids.append(hymn_id)  # Keep original case for display
+                print(f"Loaded {len(self.hymns_data)} hymns from {csv_path}")
+            else:
+                print(f"Hymns file not found: {csv_path}")
         except Exception as e:
-            pass
+            print(f"Error loading hymns data: {e}")
 
     def load_bible_books_data(self):
         """Load Bible books data from CSV file"""
@@ -1681,9 +1731,152 @@ class MainFrame(wx.Frame):
         except Exception as e:
             wx.MessageBox(f"Error projecting Bible: {str(e)}", "Error", wx.OK | wx.ICON_ERROR)
     
+    def on_slides_text_change(self, event):
+        """Handle slides text changes - update status"""
+        slides_input = self.slides_ctrl.GetValue().strip()
+        
+        if slides_input:
+            # Check if it's a hymn ID
+            if slides_input.upper() in self.hymns_data:
+                hymn_info = f"Hymn {slides_input}"
+                if hasattr(self, 'slides_status'):
+                    self.slides_status.SetLabel(f"✓ Ready to present: {hymn_info}")
+                    self.slides_status.SetForegroundColour(wx.Colour(39, 174, 96))
+            elif self.is_google_slides_id(slides_input):
+                if hasattr(self, 'slides_status'):
+                    self.slides_status.SetLabel(f"✓ Ready to present: Google Slides ({slides_input[:20]}...)")
+                    self.slides_status.SetForegroundColour(wx.Colour(39, 174, 96))
+            else:
+                if hasattr(self, 'slides_status'):
+                    self.slides_status.SetLabel("Enter hymn ID (123, A123, C456) or Google Slides ID/URL")
+                    self.slides_status.SetForegroundColour(wx.Colour(127, 140, 141))
+        else:
+            if hasattr(self, 'slides_status'):
+                self.slides_status.SetLabel("Enter hymn ID (123, A123, C456) or Google Slides ID/URL")
+                self.slides_status.SetForegroundColour(wx.Colour(127, 140, 141))
+            
+    def is_google_slides_id(self, text):
+        """Check if text is a Google Slides ID or URL"""
+        # Check for Google Slides URL patterns
+        if 'docs.google.com/presentation' in text:
+            return True
+        # Check for standalone presentation ID (long alphanumeric string)
+        if len(text) > 20 and text.replace('-', '').replace('_', '').isalnum():
+            return True
+        return False
+        
     def on_slides_button_click(self, event):
-        """Handle slides present button click"""
-        wx.MessageBox("Slides projection not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+        """Handle slides button click - always projects/reloads content"""
+        slides_input = self.slides_ctrl.GetValue().strip()
+        
+        if not slides_input:
+            wx.MessageBox("Please enter a hymn ID or Google Slides ID/URL", "Error", wx.OK | wx.ICON_ERROR)
+            return
+        
+        # Check if it's a hymn ID first
+        if slides_input.upper() in self.hymns_data:
+            # It's a hymn ID, get the Google Slides ID
+            google_slides_id = self.hymns_data[slides_input.upper()]
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/embed?start=false&loop=false&delayms=3000"
+            print(f"Loading hymn {slides_input} -> {google_slides_id}")
+        elif self.is_google_slides_id(slides_input):
+            # It's a Google Slides ID or URL
+            if 'docs.google.com/presentation' in slides_input:
+                # Extract ID from URL
+                import re
+                match = re.search(r'/presentation/d/([a-zA-Z0-9-_]+)', slides_input)
+                if match:
+                    google_slides_id = match.group(1)
+                else:
+                    wx.MessageBox("Invalid Google Slides URL format", "Error", wx.OK | wx.ICON_ERROR)
+                    return
+            else:
+                # Assume it's a direct ID
+                google_slides_id = slides_input
+                
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/embed?start=false&loop=false&delayms=3000"
+        else:
+            wx.MessageBox("Invalid input. Please enter a hymn ID (123, A123, C456) or Google Slides ID/URL", "Error", wx.OK | wx.ICON_ERROR)
+            return
+            
+        # Always start new projection (reload content)
+        self.start_slides_projection(presentation_url)
+        
+    def start_slides_projection(self, url):
+        """Start projecting slides to second screen"""
+        try:
+            # Hide any existing projections to avoid conflicts
+            if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
+                self.hide_projection(auto_hide=True)
+            if self.is_projecting_bible and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
+                self.hide_bible_projection(auto_hide=True)
+            if hasattr(self, 'agenda_projection_frame') and self.agenda_projection_frame and not self.agenda_projection_frame.is_hidden:
+                self.hide_agenda_projection(auto_hide=True)
+                
+            # Stop existing slides projection
+            if self.slides_projection_frame:
+                self.slides_projection_frame.Destroy()
+                self.slides_projection_frame = None
+                
+            # Get target monitor
+            monitors = get_monitors()
+            target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+            
+            print(f"Starting slides projection: {url}")
+            
+            # Update status immediately
+            self.status_text.SetLabel("Creating slides projection...")
+            if hasattr(self, 'slides_btn'):
+                self.slides_btn.Enable(False)
+            
+            # Create slides projection window
+            self.slides_projection_frame = ProjectionFrame(self, url, target_monitor, "slides")
+            
+            # Update status
+            self.status_text.SetLabel("Loading presentation...")
+            
+        except Exception as e:
+            print(f"Slides projection error: {e}")
+            self.on_slides_projection_error(f"Failed to start slides projection: {str(e)}")
+            
+    def on_slides_projection_loaded(self):
+        """Called when slides projection loads successfully"""
+        self.is_projecting_slides = True
+        self.status_text.SetLabel("✓ Slides projection active - ESC/Ctrl+Q/Ctrl+W to close, F11 to toggle fullscreen")
+        self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+        
+        # Update button states
+        if hasattr(self, 'slides_btn'):
+            self.slides_btn.Enable(True)
+        
+        # Update all projection buttons
+        self.update_all_projection_buttons()
+        
+    def on_slides_projection_error(self, error_msg):
+        """Called when slides projection fails"""
+        self.status_text.SetLabel("Slides projection failed")
+        self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
+        
+        # Reset button
+        if hasattr(self, 'slides_btn'):
+            self.slides_btn.Enable(True)
+        
+        wx.MessageBox(f"Slides projection failed:\n{error_msg}", "Error", wx.OK | wx.ICON_ERROR)
+        
+    def stop_slides_projection(self):
+        """Stop the slides projection"""
+        if self.slides_projection_frame:
+            self.slides_projection_frame.Destroy()
+            self.slides_projection_frame = None
+            
+        self.is_projecting_slides = False
+        
+        # Reset UI
+        self.status_text.SetLabel("Slides projection stopped")
+        self.status_text.SetForegroundColour(wx.Colour(127, 140, 141))
+        
+        # Update all projection buttons
+        self.update_all_projection_buttons()
     
     def on_main_button_click(self, event):
         """Handle URL project button click with Chrome launch"""
@@ -1807,23 +2000,99 @@ class MainFrame(wx.Frame):
         self.update_all_projection_buttons()
     
     def on_agenda_button_click(self, event):
-        """Handle agenda button click"""
-        # Implementation would go here
-        pass
+        """Handle agenda button click - toggle show/hide agenda"""
+        if self.is_projecting_agenda and self.agenda_projection_frame:
+            # Agenda is currently active, check if hidden or visible
+            if self.agenda_projection_frame.is_hidden:
+                # Currently hidden, show it
+                self.show_agenda_projection()
+            else:
+                # Currently visible, hide it
+                self.hide_agenda_projection()
+        else:
+            # Start agenda projection for the first time
+            self.start_agenda_projection()
+            
+    def start_agenda_projection(self):
+        """Start projecting hardcoded agenda to second screen (first time only)"""
+        try:
+            # Hide any existing projections to avoid conflicts
+            if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
+                self.hide_projection(auto_hide=True)
+            if self.is_projecting_slides and self.slides_projection_frame and not self.slides_projection_frame.is_hidden:
+                self.hide_slides_projection(auto_hide=True)
+            if self.is_projecting_bible and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
+                self.hide_bible_projection(auto_hide=True)
+                
+            # Only create if it doesn't exist
+            if not self.agenda_projection_frame:
+                # Hardcoded agenda URL in full-screen presentation mode
+                agenda_url = "https://docs.google.com/presentation/d/16z_afMCpHY1WzO3aJ_M-bfn-fdNTzKaejovlC_oBFUk/embed?start=false&loop=false&delayms=3000"
+                    
+                # Get target monitor
+                monitors = get_monitors()
+                target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+                
+                print(f"Starting agenda projection: {agenda_url}")
+                
+                # Update status immediately
+                self.status_text.SetLabel("Creating agenda projection...")
+                self.agenda_btn.Enable(False)
+                
+                # Create agenda projection window
+                self.agenda_projection_frame = ProjectionFrame(self, agenda_url, target_monitor, "agenda")
+                
+                # Update status
+                self.status_text.SetLabel("Loading agenda...")
+            else:
+                # Just show existing agenda
+                self.show_agenda_projection()
+                
+        except Exception as e:
+            print(f"Agenda projection error: {e}")
+            self.on_agenda_projection_error(f"Failed to start agenda projection: {str(e)}")
+            
+    def show_agenda_projection(self):
+        """Show the agenda projection window"""
+        if self.agenda_projection_frame:
+            # Hide any visible web/slides/bible projections first
+            if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
+                self.hide_projection(auto_hide=True)
+            if self.is_projecting_slides and self.slides_projection_frame and not self.slides_projection_frame.is_hidden:
+                self.hide_slides_projection(auto_hide=True)
+            if self.is_projecting_bible and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
+                self.hide_bible_projection(auto_hide=True)
+                
+            self.agenda_projection_frame.show_projection()
+            self.status_text.SetLabel("✓ Agenda projection restored")
+            
+            # Update all projection buttons
+            self.update_all_projection_buttons()
+            
+    def on_agenda_projection_loaded(self):
+        """Called when agenda projection loads successfully"""
+        self.is_projecting_agenda = True
+        self.status_text.SetLabel("✓ Agenda projection active - ESC/Ctrl+Q/Ctrl+W to close, F11 to toggle fullscreen")
+        self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+        
+        # Update button states
+        self.agenda_btn.Enable(True)
+        self.agenda_btn.SetLabel("🗕 Hide Agenda")
+        
+        # Update all projection buttons
+        self.update_all_projection_buttons()
+        
+    def on_agenda_projection_error(self, error_msg):
+        """Called when agenda projection fails"""
+        self.status_text.SetLabel("Agenda projection failed")
+        self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
+        
+        # Reset button
+        self.agenda_btn.Enable(True)
+        
+        wx.MessageBox(f"Agenda projection failed:\n{error_msg}", "Error", wx.OK | wx.ICON_ERROR)
     
     # Event handlers for UI controls
-    def on_version_checkbox_change(self, event):
-        """Handle Bible version checkbox changes"""
-        # Ensure at least one version is selected
-        if not any([self.cuv_checkbox.GetValue(), self.niv_checkbox.GetValue(), self.esv_checkbox.GetValue()]):
-            # Re-check the one that was just unchecked
-            event.GetEventObject().SetValue(True)
-            wx.MessageBox("At least one Bible version must be selected", "Warning", wx.OK | wx.ICON_WARNING)
-
-    def on_bible_clear_click(self, event):
-        """Handle Bible input clear button"""
-        self.bible_ctrl.SetValue("")
-        self.bible_ctrl.SetFocus()
 
     def on_url_toggle_click(self, event):
         """Handle URL show/hide toggle"""
@@ -1970,22 +2239,202 @@ class MainFrame(wx.Frame):
     def on_bible_history_click(self, event):
         """Handle Bible history button click"""
         wx.MessageBox("Bible history not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+    
+    def on_version_checkbox_change(self, event):
+        """Handle changes to bible version checkboxes"""
+        # Update status to show selected versions
+        selected_count = sum(1 for checkbox in self.version_checkboxes.values() if checkbox.GetValue())
+        if selected_count > 0:
+            versions_text = ", ".join([self.bible_versions[k] for k, v in self.version_checkboxes.items() if v.GetValue()])
+            current_text = self.bible_ctrl.GetValue().strip()
+            if current_text:
+                self.bible_status.SetLabel(f"Enter verse for '{current_text}' - {selected_count} version(s): {versions_text}")
+            else:
+                self.bible_status.SetLabel(f"Enter book name and verse - {selected_count} version(s) selected: {versions_text}")
+        else:
+            self.bible_status.SetLabel("Select at least one Bible version to display")
+            self.bible_status.SetForegroundColour(wx.Colour(231, 76, 60))
+            return
+            
+        self.bible_status.SetForegroundColour(wx.Colour(127, 140, 141))
 
-    def on_prev_chapter_click(self, event): 
-        wx.MessageBox("Chapter navigation not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+    def on_bible_clear_click(self, event):
+        """Handle click on the clear button for the bible text control"""
+        self.bible_ctrl.SetValue("")
+        self.bible_ctrl.SetFocus()
+        
+        # Clear preview area
+        self.bible_verses_sizer.Clear(True)
+        self.bible_preview_scroll.Layout()
+        self.bible_preview_scroll.FitInside()
+        self.preview_header.SetLabel("Chapter Preview (empty - click 👁 to load):")
+        
+        # Disable navigation buttons
+        self.prev_chapter_btn.Enable(False)
+        self.next_chapter_btn.Enable(False)
+        self.prev_verse_btn.Enable(False)
+        self.next_verse_btn.Enable(False)
+        
+        # Clear stored bible info
+        if hasattr(self, 'current_bible_info'):
+            delattr(self, 'current_bible_info')
+        
+        # Clear current projected bible info
+        self.current_projected_bible = None
+        
+        # Show how many versions are selected
+        selected_count = sum(1 for checkbox in self.version_checkboxes.values() if checkbox.GetValue())
+        if selected_count > 0:
+            versions_text = ", ".join([self.bible_versions[k] for k, v in self.version_checkboxes.items() if v.GetValue()])
+            self.bible_status.SetLabel(f"Enter book name and verse - {selected_count} version(s) selected: {versions_text}")
+        else:
+            self.bible_status.SetLabel("Enter book name and verse - No versions selected")
+    
+    def on_prev_verse_click(self, event):
+        """Navigate to previous verse"""
+        if not self.current_projected_bible:
+            return
+            
+        bible_info = self.current_projected_bible['bible_info']
+        current_verse = bible_info.get('verse', 1)
+        
+        if current_verse > 1:
+            # Go to previous verse in same chapter
+            bible_info['verse'] = current_verse - 1
+            bible_info['verse_end'] = current_verse - 1  # Single verse
+            selected_versions = self.current_projected_bible['selected_versions']
+            self.start_bible_projection(bible_info, is_navigation=True)
+        else:
+            # Could implement previous chapter logic here
+            wx.MessageBox("Already at first verse of chapter", "Info", wx.OK | wx.ICON_INFORMATION)
+    
+    def on_next_verse_click(self, event):
+        """Navigate to next verse"""
+        if not self.current_projected_bible:
+            return
+            
+        bible_info = self.current_projected_bible['bible_info']
+        current_verse = bible_info.get('verse', 1)
+        
+        # For now, just increment verse (could add chapter bounds checking)
+        bible_info['verse'] = current_verse + 1
+        bible_info['verse_end'] = current_verse + 1  # Single verse
+        selected_versions = self.current_projected_bible['selected_versions']
+        self.start_bible_projection(bible_info, is_navigation=True)
+    
+    def on_prev_chapter_click(self, event):
+        """Navigate to previous chapter in preview"""
+        if hasattr(self, 'current_bible_info'):
+            bible_info = self.current_bible_info
+            current_chapter = bible_info.get('chapter', 1)
+            
+            if current_chapter > 1:
+                bible_info['chapter'] = current_chapter - 1
+                self.load_bible_preview(bible_info)
+            else:
+                wx.MessageBox("Already at first chapter", "Info", wx.OK | wx.ICON_INFORMATION)
     
     def on_next_chapter_click(self, event):
-        wx.MessageBox("Chapter navigation not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+        """Navigate to next chapter in preview"""
+        if hasattr(self, 'current_bible_info'):
+            bible_info = self.current_bible_info
+            current_chapter = bible_info.get('chapter', 1)
+            book_name = bible_info.get('book', '')
+            
+            # Get max chapters for this book
+            if book_name in self.bible_books:
+                max_chapters = self.bible_books[book_name][1]
+                if current_chapter < max_chapters:
+                    bible_info['chapter'] = current_chapter + 1
+                    self.load_bible_preview(bible_info)
+                else:
+                    wx.MessageBox(f"Already at last chapter of {book_name}", "Info", wx.OK | wx.ICON_INFORMATION)
+            else:
+                # Just increment for now
+                bible_info['chapter'] = current_chapter + 1
+                self.load_bible_preview(bible_info)
     
-    def on_slides_toggle_click(self, event): 
-        wx.MessageBox("Slides toggle not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+    def on_slides_toggle_click(self, event):
+        """Handle slides projection show/hide toggle"""
+        if self.slides_projection_frame and self.is_projecting_slides:
+            if self.slides_projection_frame.is_hidden:
+                self.show_slides_projection()
+            else:
+                self.hide_slides_projection()
     
-    def on_slides_text_change(self, event): pass
-    def show_hymns_dropdown(self, event): 
-        wx.MessageBox("Hymns dropdown not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+
+    def show_hymns_dropdown(self, event):
+        """Show hymns dropdown menu"""
+        if not self.hymns_data:
+            wx.MessageBox("No hymns data loaded from hymns.csv", "No Hymns", wx.OK | wx.ICON_WARNING)
+            return
+            
+        # Create popup menu with hymns
+        menu = wx.Menu()
+        
+        # Add first 20 hymns for quick access
+        hymn_ids = sorted(self.hymns_ids[:20])  # Show first 20
+        for hymn_id in hymn_ids:
+            menu_item = menu.Append(wx.ID_ANY, f"Hymn {hymn_id}")
+            self.Bind(wx.EVT_MENU, lambda evt, hid=hymn_id: self.select_hymn(hid), menu_item)
+            
+        if len(self.hymns_ids) > 20:
+            menu.AppendSeparator()
+            menu.Append(wx.ID_ANY, f"... and {len(self.hymns_ids) - 20} more hymns")
+        
+        # Show menu
+        btn_pos = self.hymn_dropdown_btn.GetPosition()
+        btn_size = self.hymn_dropdown_btn.GetSize()
+        self.PopupMenu(menu, (btn_pos.x, btn_pos.y + btn_size.height))
+        
+    def select_hymn(self, hymn_id):
+        """Select a hymn from the dropdown"""
+        self.slides_ctrl.SetValue(hymn_id)
+        self.slides_ctrl.SetFocus()
+        # Update status
+        self.on_slides_text_change(None)
     
-    def hide_slides_projection(self, auto_hide=False): pass
-    def hide_agenda_projection(self, auto_hide=False): pass
+    def hide_slides_projection(self, auto_hide=False):
+        """Hide the slides projection window"""
+        if self.slides_projection_frame:
+            self.slides_projection_frame.hide_projection()
+            if auto_hide:
+                self.status_text.SetLabel("📱 Slides auto-hidden for other projection")
+            else:
+                self.status_text.SetLabel("📱 Slides projection hidden - click toggle to restore")
+            
+            # Update all projection buttons
+            self.update_all_projection_buttons()
+            
+    def show_slides_projection(self):
+        """Show the slides projection window"""
+        if self.slides_projection_frame:
+            # Hide any visible web/bible/agenda projections first
+            if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
+                self.hide_projection(auto_hide=True)
+            if self.is_projecting_bible and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
+                self.hide_bible_projection(auto_hide=True)
+            if hasattr(self, 'agenda_projection_frame') and self.agenda_projection_frame and not self.agenda_projection_frame.is_hidden:
+                self.hide_agenda_projection(auto_hide=True)
+                
+            self.slides_projection_frame.show_projection()
+            self.status_text.SetLabel("✓ Slides projection restored")
+            
+            # Update all projection buttons
+            self.update_all_projection_buttons()
+            
+    def hide_agenda_projection(self, auto_hide=False):
+        """Hide the agenda projection window"""
+        if self.agenda_projection_frame:
+            self.agenda_projection_frame.hide_projection()
+            if auto_hide:
+                self.status_text.SetLabel("📱 Agenda auto-hidden for other projection")
+            else:
+                self.status_text.SetLabel("📱 Agenda projection hidden - click button to restore")
+                self.agenda_btn.SetLabel("📋 Show Agenda")
+            
+            # Update all projection buttons
+            self.update_all_projection_buttons()
     
     # Status update methods
     def on_projection_loaded(self):
@@ -2004,10 +2453,8 @@ class MainFrame(wx.Frame):
         self.status_text.SetLabel(f"❌ Bible projection error: {error}")
         self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
 
-    def on_slides_projection_loaded(self): pass
-    def on_slides_projection_error(self, error): pass
-    def on_agenda_projection_loaded(self): pass
-    def on_agenda_projection_error(self, error): pass
+
+
 
 
 class WebProjectorApp(wx.App):
