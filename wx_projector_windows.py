@@ -341,9 +341,11 @@ class MainFrame(wx.Frame):
         self.agenda_projection_frame = None
         self.is_projecting_agenda = False
         
-        # Chrome browser process for URL projection
-        self.chrome_process = None
+        # Chrome browser processes
+        self.chrome_process = None  # For URL projection
         self.chrome_monitor_timer = None
+        self.hymn_chrome_process = None  # For hymn projection
+        self.agenda_chrome_process = None  # For agenda projection
         
         # Bind close event to clean up Chrome processes
         self.Bind(wx.EVT_CLOSE, self.on_main_window_close)
@@ -1910,11 +1912,12 @@ class MainFrame(wx.Frame):
             
         # Skip WebView entirely for hymns - go straight to Chrome
         print("Skipping WebView for hymns - launching Chrome directly")
-        chrome_url = f"https://docs.google.com/presentation/d/{google_slides_id}/present?start=true&loop=false&delayms=3000"
+        # Use manual control (no auto-start) and present mode for manual navigation
+        chrome_url = f"https://docs.google.com/presentation/d/{google_slides_id}/present?start=false&loop=false&delayms=3000"
         
         try:
             self.current_presentation_id = google_slides_id
-            self.launch_chrome_for_slides(chrome_url)
+            self.launch_chrome_for_hymns(chrome_url)
         except Exception as e:
             print(f"Chrome launch failed: {e}")
             wx.MessageBox(f"Failed to launch Chrome for hymn projection: {str(e)}", "Error", wx.OK | wx.ICON_ERROR)
@@ -1995,6 +1998,158 @@ class MainFrame(wx.Frame):
                 
         except Exception as e:
             print(f"Chrome launch failed: {e}")
+            raise e
+
+    def launch_chrome_for_hymns(self, url):
+        """Launch or reuse Chrome browser for hymn projection"""
+        try:
+            print(f"Attempting to launch/reuse Chrome for hymns with URL: {url}")
+            
+            # Check if hymn Chrome process already exists and is running
+            if self.hymn_chrome_process and self.hymn_chrome_process.poll() is None:
+                print("Reusing existing hymn Chrome window - opening new tab")
+                # Open new tab in existing Chrome window
+                import subprocess
+                subprocess.Popen([
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    '--new-tab',
+                    url
+                ])
+                print("✓ Opened new hymn in existing Chrome window")
+            else:
+                print("Launching new Chrome window for hymns")
+                # Get target monitor for positioning
+                monitors = get_monitors()
+                target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+                print(f"Target monitor: {target_monitor.x}x{target_monitor.y} ({target_monitor.width}x{target_monitor.height})")
+                
+                # Launch Chrome in fullscreen on target monitor
+                chrome_args = [
+                    '--new-window',
+                    '--start-fullscreen',
+                    f'--window-position={target_monitor.x},{target_monitor.y}',
+                    f'--window-size={target_monitor.width},{target_monitor.height}',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    url
+                ]
+                
+                # Try different Chrome executable paths
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    "chrome.exe",  # If in PATH
+                    "google-chrome"  # Linux/Mac style
+                ]
+                
+                chrome_launched = False
+                for chrome_path in chrome_paths:
+                    try:
+                        print(f"Trying Chrome path: {chrome_path}")
+                        import subprocess
+                        self.hymn_chrome_process = subprocess.Popen([chrome_path] + chrome_args)
+                        chrome_launched = True
+                        print(f"✓ Successfully launched hymn Chrome from: {chrome_path}")
+                        break
+                    except FileNotFoundError:
+                        print(f"Chrome not found at: {chrome_path}")
+                        continue
+                    except Exception as e:
+                        print(f"Failed to launch Chrome from {chrome_path}: {e}")
+                        continue
+                
+                if not chrome_launched:
+                    print("❌ Chrome browser not found in any standard location")
+                    raise Exception("Chrome browser not found")
+            
+            # Update status
+            self.is_projecting_slides = True
+            self.status_text.SetLabel("✓ Hymn projection active in Chrome browser")
+            self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+            if hasattr(self, 'slides_btn'):
+                self.slides_btn.Enable(True)
+            self.update_all_projection_buttons()
+            print("Hymn Chrome projection setup complete")
+                
+        except Exception as e:
+            print(f"Hymn Chrome launch failed: {e}")
+            raise e
+
+    def launch_chrome_for_agenda(self, url):
+        """Launch Chrome browser for agenda projection in separate window"""
+        try:
+            print(f"Attempting to launch Chrome for agenda with URL: {url}")
+            
+            # Check if agenda Chrome process already exists and is running
+            if self.agenda_chrome_process and self.agenda_chrome_process.poll() is None:
+                print("Agenda Chrome window already exists - replacing content")
+                # For agenda, we can reuse the same window by opening new tab
+                import subprocess
+                subprocess.Popen([
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    '--new-tab',
+                    url
+                ])
+                print("✓ Opened agenda in existing Chrome window")
+            else:
+                print("Launching new Chrome window for agenda")
+                # Get target monitor for positioning (use different position than hymns)
+                monitors = get_monitors()
+                target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+                
+                # Position agenda window slightly offset from hymn window
+                offset_x = 100
+                offset_y = 100
+                
+                print(f"Target monitor: {target_monitor.x + offset_x}x{target_monitor.y + offset_y} ({target_monitor.width}x{target_monitor.height})")
+                
+                # Launch Chrome in fullscreen on target monitor
+                chrome_args = [
+                    '--new-window',
+                    '--start-fullscreen',
+                    f'--window-position={target_monitor.x + offset_x},{target_monitor.y + offset_y}',
+                    f'--window-size={target_monitor.width},{target_monitor.height}',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    url
+                ]
+                
+                # Try different Chrome executable paths
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    "chrome.exe",  # If in PATH
+                    "google-chrome"  # Linux/Mac style
+                ]
+                
+                chrome_launched = False
+                for chrome_path in chrome_paths:
+                    try:
+                        print(f"Trying Chrome path: {chrome_path}")
+                        import subprocess
+                        self.agenda_chrome_process = subprocess.Popen([chrome_path] + chrome_args)
+                        chrome_launched = True
+                        print(f"✓ Successfully launched agenda Chrome from: {chrome_path}")
+                        break
+                    except FileNotFoundError:
+                        print(f"Chrome not found at: {chrome_path}")
+                        continue
+                    except Exception as e:
+                        print(f"Failed to launch Chrome from {chrome_path}: {e}")
+                        continue
+                
+                if not chrome_launched:
+                    print("❌ Chrome browser not found in any standard location")
+                    raise Exception("Chrome browser not found")
+            
+            print("Agenda Chrome projection setup complete")
+                
+        except Exception as e:
+            print(f"Agenda Chrome launch failed: {e}")
             raise e
     
     def test_and_start_slides_projection(self, url, presentation_id):
@@ -2346,7 +2501,7 @@ This appears to be a Google Slides embedding restriction. The presentation works
             self.start_agenda_projection()
             
     def start_agenda_projection(self):
-        """Start projecting hardcoded agenda to second screen (first time only)"""
+        """Start projecting hardcoded agenda using Chrome browser"""
         try:
             # Hide any existing projections to avoid conflicts
             if self.is_projecting and self.projection_frame and not self.projection_frame.is_hidden:
@@ -2356,33 +2511,35 @@ This appears to be a Google Slides embedding restriction. The presentation works
             if self.is_projecting_bible and self.bible_projection_frame and not self.bible_projection_frame.is_hidden:
                 self.hide_bible_projection(auto_hide=True)
                 
-            # Only create if it doesn't exist
-            if not self.agenda_projection_frame:
-                # Hardcoded agenda URL in full-screen presentation mode
-                agenda_url = "https://docs.google.com/presentation/d/16z_afMCpHY1WzO3aJ_M-bfn-fdNTzKaejovlC_oBFUk/embed?start=false&loop=false&delayms=3000"
-                    
-                # Get target monitor
-                monitors = get_monitors()
-                target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
-                
-                print(f"Starting agenda projection: {agenda_url}")
-                
-                # Update status immediately
-                self.status_text.SetLabel("Creating agenda projection...")
-                self.agenda_btn.Enable(False)
-                
-                # Create agenda projection window
-                self.agenda_projection_frame = ProjectionFrame(self, agenda_url, target_monitor, "agenda")
-                
-                # Update status
-                self.status_text.SetLabel("Loading agenda...")
-            else:
-                # Just show existing agenda
-                self.show_agenda_projection()
+            # Use Chrome for agenda projection (manual control, no auto-start)
+            agenda_presentation_id = "16z_afMCpHY1WzO3aJ_M-bfn-fdNTzKaejovlC_oBFUk"
+            agenda_url = f"https://docs.google.com/presentation/d/{agenda_presentation_id}/present?start=false&loop=false&delayms=3000"
+            
+            print(f"Starting agenda projection in Chrome: {agenda_url}")
+            
+            # Update status immediately
+            self.status_text.SetLabel("Launching agenda in Chrome...")
+            self.agenda_btn.Enable(False)
+            
+            try:
+                self.launch_chrome_for_agenda(agenda_url)
+                self.is_projecting_agenda = True
+                self.status_text.SetLabel("✓ Agenda projection active in Chrome browser")
+                self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+                self.agenda_btn.Enable(True)
+                self.update_all_projection_buttons()
+            except Exception as chrome_error:
+                print(f"Chrome launch for agenda failed: {chrome_error}")
+                self.status_text.SetLabel("❌ Failed to launch Chrome for agenda")
+                self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
+                self.agenda_btn.Enable(True)
+                wx.MessageBox(f"Failed to launch Chrome for agenda projection: {str(chrome_error)}", "Error", wx.OK | wx.ICON_ERROR)
                 
         except Exception as e:
             print(f"Agenda projection error: {e}")
-            self.on_agenda_projection_error(f"Failed to start agenda projection: {str(e)}")
+            self.status_text.SetLabel("❌ Agenda projection failed")
+            self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
+            self.agenda_btn.Enable(True)
             
     def show_agenda_projection(self):
         """Show the agenda projection window"""
@@ -3041,10 +3198,10 @@ This appears to be a Google Slides embedding restriction. The presentation works
         """Handle main window close - cleanup all processes"""
         print("Main window closing - cleaning up processes...")
         
-        # Stop Chrome process if it exists
+        # Stop URL Chrome process if it exists
         if hasattr(self, 'chrome_process') and self.chrome_process:
             try:
-                print("Terminating Chrome process...")
+                print("Terminating URL Chrome process...")
                 self.chrome_process.terminate()
                 # Give it a moment to close gracefully
                 import time
@@ -3052,9 +3209,39 @@ This appears to be a Google Slides embedding restriction. The presentation works
                 # Force kill if still running
                 if self.chrome_process.poll() is None:
                     self.chrome_process.kill()
-                print("Chrome process terminated")
+                print("URL Chrome process terminated")
             except Exception as e:
-                print(f"Error terminating Chrome process: {e}")
+                print(f"Error terminating URL Chrome process: {e}")
+        
+        # Stop Hymn Chrome process if it exists
+        if hasattr(self, 'hymn_chrome_process') and self.hymn_chrome_process:
+            try:
+                print("Terminating Hymn Chrome process...")
+                self.hymn_chrome_process.terminate()
+                # Give it a moment to close gracefully
+                import time
+                time.sleep(0.5)
+                # Force kill if still running
+                if self.hymn_chrome_process.poll() is None:
+                    self.hymn_chrome_process.kill()
+                print("Hymn Chrome process terminated")
+            except Exception as e:
+                print(f"Error terminating Hymn Chrome process: {e}")
+        
+        # Stop Agenda Chrome process if it exists
+        if hasattr(self, 'agenda_chrome_process') and self.agenda_chrome_process:
+            try:
+                print("Terminating Agenda Chrome process...")
+                self.agenda_chrome_process.terminate()
+                # Give it a moment to close gracefully
+                import time
+                time.sleep(0.5)
+                # Force kill if still running
+                if self.agenda_chrome_process.poll() is None:
+                    self.agenda_chrome_process.kill()
+                print("Agenda Chrome process terminated")
+            except Exception as e:
+                print(f"Error terminating Agenda Chrome process: {e}")
         
         # Stop Chrome monitor timer if it exists
         if hasattr(self, 'chrome_monitor_timer') and self.chrome_monitor_timer:
