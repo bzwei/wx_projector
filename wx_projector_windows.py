@@ -201,7 +201,42 @@ class ProjectionFrame(wx.Frame):
     def on_page_loaded(self, event):
         """Handle page load completion"""
         try:
-            # Notify parent that projection is ready
+            # Get the current URL to check for redirects
+            current_url = self.browser.GetCurrentURL()
+            print(f"Page loaded: {current_url}")
+            
+            # Check if we've been redirected to Google Account Help page (for slides)
+            if self.projection_type == "slides":
+                # Common Google help/error page indicators
+                help_indicators = [
+                    'support.google.com',
+                    'accounts.google.com',
+                    'drive.google.com/help',
+                    'docs.google.com/help',
+                    '/signin',
+                    '/login',
+                    'access_denied',
+                    'permission_denied'
+                ]
+                
+                # Check if current URL contains any help page indicators
+                is_help_page = any(indicator in current_url.lower() for indicator in help_indicators)
+                
+                # Also check if the original URL was a Google Slides URL but we're now somewhere else
+                is_google_slides_redirect = (
+                    'docs.google.com/presentation' in self.url and 
+                    'docs.google.com/presentation' not in current_url
+                )
+                
+                if is_help_page or is_google_slides_redirect:
+                    print(f"Detected redirect to help/error page: {current_url}")
+                    print(f"Original URL was: {self.url}")
+                    # Treat this as an error to trigger fallback
+                    error_msg = f"Redirected to help page: {current_url}"
+                    self.parent_app.on_slides_projection_error(error_msg)
+                    return
+            
+            # If we get here, the page loaded successfully
             if self.projection_type == "web":
                 self.parent_app.on_projection_loaded()
             elif self.projection_type == "slides":
@@ -212,7 +247,10 @@ class ProjectionFrame(wx.Frame):
                 self.parent_app.on_agenda_projection_loaded()
                 
         except Exception as e:
-            pass
+            print(f"Error in on_page_loaded: {e}")
+            # Treat exceptions as errors
+            if self.projection_type == "slides":
+                self.parent_app.on_slides_projection_error(f"Page load error: {str(e)}")
 
     def on_page_error(self, event):
         """Handle page load errors"""
