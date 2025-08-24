@@ -2007,62 +2007,71 @@ class MainFrame(wx.Frame):
             
             # Check if hymn Chrome process already exists and is running
             if self.hymn_chrome_process and self.hymn_chrome_process.poll() is None:
-                print("Reusing existing hymn Chrome window - opening new tab")
-                # Open new tab in existing Chrome window
-                import subprocess
-                subprocess.Popen([
-                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                    '--new-tab',
-                    url
-                ])
-                print("✓ Opened new hymn in existing Chrome window")
-            else:
-                print("Launching new Chrome window for hymns")
-                # Get target monitor for positioning
-                monitors = get_monitors()
-                target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
-                print(f"Target monitor: {target_monitor.x}x{target_monitor.y} ({target_monitor.width}x{target_monitor.height})")
+                print("Reusing existing hymn Chrome window - navigating to new URL")
+                # Instead of opening new tab, use Chrome's remote debugging to navigate existing tab
+                # This is more complex, so let's use a simpler approach: kill and restart
+                try:
+                    print("Terminating existing hymn Chrome to load new hymn...")
+                    self.hymn_chrome_process.terminate()
+                    import time
+                    time.sleep(0.5)
+                    if self.hymn_chrome_process.poll() is None:
+                        self.hymn_chrome_process.kill()
+                    self.hymn_chrome_process = None
+                    print("Previous hymn Chrome terminated")
+                except Exception as e:
+                    print(f"Error terminating previous hymn Chrome: {e}")
                 
-                # Launch Chrome in fullscreen on target monitor
-                chrome_args = [
-                    '--new-window',
-                    '--start-fullscreen',
-                    f'--window-position={target_monitor.x},{target_monitor.y}',
-                    f'--window-size={target_monitor.width},{target_monitor.height}',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--no-first-run',
-                    '--no-default-browser-check',
-                    url
-                ]
-                
-                # Try different Chrome executable paths
-                chrome_paths = [
-                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                    "chrome.exe",  # If in PATH
-                    "google-chrome"  # Linux/Mac style
-                ]
-                
-                chrome_launched = False
-                for chrome_path in chrome_paths:
-                    try:
-                        print(f"Trying Chrome path: {chrome_path}")
-                        import subprocess
-                        self.hymn_chrome_process = subprocess.Popen([chrome_path] + chrome_args)
-                        chrome_launched = True
-                        print(f"✓ Successfully launched hymn Chrome from: {chrome_path}")
-                        break
-                    except FileNotFoundError:
-                        print(f"Chrome not found at: {chrome_path}")
-                        continue
-                    except Exception as e:
-                        print(f"Failed to launch Chrome from {chrome_path}: {e}")
-                        continue
-                
-                if not chrome_launched:
-                    print("❌ Chrome browser not found in any standard location")
-                    raise Exception("Chrome browser not found")
+                # Now launch new Chrome window with the new URL
+                print("Launching Chrome with new hymn URL")
+            
+            # Launch new Chrome window (either first time or after terminating previous)
+            print("Launching new Chrome window for hymns")
+            # Get target monitor for positioning
+            monitors = get_monitors()
+            target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+            print(f"Target monitor: {target_monitor.x}x{target_monitor.y} ({target_monitor.width}x{target_monitor.height})")
+            
+            # Launch Chrome in fullscreen on target monitor
+            chrome_args = [
+                '--new-window',
+                '--start-fullscreen',
+                f'--window-position={target_monitor.x},{target_monitor.y}',
+                f'--window-size={target_monitor.width},{target_monitor.height}',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--no-first-run',
+                '--no-default-browser-check',
+                url
+            ]
+            
+            # Try different Chrome executable paths
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                "chrome.exe",  # If in PATH
+                "google-chrome"  # Linux/Mac style
+            ]
+            
+            chrome_launched = False
+            for chrome_path in chrome_paths:
+                try:
+                    print(f"Trying Chrome path: {chrome_path}")
+                    import subprocess
+                    self.hymn_chrome_process = subprocess.Popen([chrome_path] + chrome_args)
+                    chrome_launched = True
+                    print(f"✓ Successfully launched hymn Chrome from: {chrome_path}")
+                    break
+                except FileNotFoundError:
+                    print(f"Chrome not found at: {chrome_path}")
+                    continue
+                except Exception as e:
+                    print(f"Failed to launch Chrome from {chrome_path}: {e}")
+                    continue
+            
+            if not chrome_launched:
+                print("❌ Chrome browser not found in any standard location")
+                raise Exception("Chrome browser not found")
             
             # Update status
             self.is_projecting_slides = True
