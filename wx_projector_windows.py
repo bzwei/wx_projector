@@ -1908,8 +1908,16 @@ class MainFrame(wx.Frame):
             wx.MessageBox("Invalid input. Please enter a hymn ID (123, A123, C456) or Google Slides ID/URL", "Error", wx.OK | wx.ICON_ERROR)
             return
             
-        # Start projection directly with simplified approach
-        self.start_slides_projection_simple(presentation_url, google_slides_id)
+        # Skip WebView entirely for hymns - go straight to Chrome
+        print("Skipping WebView for hymns - launching Chrome directly")
+        chrome_url = f"https://docs.google.com/presentation/d/{google_slides_id}/present?start=true&loop=false&delayms=3000"
+        
+        try:
+            self.current_presentation_id = google_slides_id
+            self.launch_chrome_for_slides(chrome_url)
+        except Exception as e:
+            print(f"Chrome launch failed: {e}")
+            wx.MessageBox(f"Failed to launch Chrome for hymn projection: {str(e)}", "Error", wx.OK | wx.ICON_ERROR)
     
     def start_slides_projection_simple(self, url, presentation_id):
         """Start slides projection with simple fallback for public presentations"""
@@ -2156,9 +2164,10 @@ class MainFrame(wx.Frame):
         try:
             # Check if we have the presentation ID
             if hasattr(self, 'current_presentation_id') and self.current_presentation_id:
-                original_url = f"https://docs.google.com/presentation/d/{self.current_presentation_id}/preview"
-                print(f"Launching Chrome with URL: {original_url}")
-                self.launch_chrome_for_slides(original_url)
+                # Use the present format which works better in Chrome browser
+                chrome_url = f"https://docs.google.com/presentation/d/{self.current_presentation_id}/present?start=true&loop=false&delayms=3000"
+                print(f"Launching Chrome with URL: {chrome_url}")
+                self.launch_chrome_for_slides(chrome_url)
                 return
             else:
                 print("No current_presentation_id available for Chrome fallback")
@@ -3027,6 +3036,42 @@ This appears to be a Google Slides embedding restriction. The presentation works
     def on_bible_projection_error(self, error):
         self.status_text.SetLabel(f"❌ Bible projection error: {error}")
         self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
+
+    def on_main_window_close(self, event):
+        """Handle main window close - cleanup all processes"""
+        print("Main window closing - cleaning up processes...")
+        
+        # Stop Chrome process if it exists
+        if hasattr(self, 'chrome_process') and self.chrome_process:
+            try:
+                print("Terminating Chrome process...")
+                self.chrome_process.terminate()
+                # Give it a moment to close gracefully
+                import time
+                time.sleep(0.5)
+                # Force kill if still running
+                if self.chrome_process.poll() is None:
+                    self.chrome_process.kill()
+                print("Chrome process terminated")
+            except Exception as e:
+                print(f"Error terminating Chrome process: {e}")
+        
+        # Stop Chrome monitor timer if it exists
+        if hasattr(self, 'chrome_monitor_timer') and self.chrome_monitor_timer:
+            self.chrome_monitor_timer.Stop()
+        
+        # Close all projection windows
+        if self.projection_frame:
+            self.projection_frame.Destroy()
+        if self.slides_projection_frame:
+            self.slides_projection_frame.Destroy()
+        if self.bible_projection_frame:
+            self.bible_projection_frame.Destroy()
+        if self.agenda_projection_frame:
+            self.agenda_projection_frame.Destroy()
+            
+        # Continue with normal close
+        event.Skip()
 
 
 
