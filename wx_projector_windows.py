@@ -2032,16 +2032,19 @@ class MainFrame(wx.Frame):
             target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
             print(f"Target monitor: {target_monitor.x}x{target_monitor.y} ({target_monitor.width}x{target_monitor.height})")
             
-            # Launch Chrome in fullscreen on target monitor
+            # Launch Chrome in fullscreen on target monitor with clean temporary profile
+            import tempfile
+            import os
+            temp_profile = os.path.join(tempfile.gettempdir(), 'chrome_hymn_profile')
+            
             chrome_args = [
                 '--new-window',
                 '--start-fullscreen',
                 f'--window-position={target_monitor.x},{target_monitor.y}',
                 f'--window-size={target_monitor.width},{target_monitor.height}',
-                '--disable-web-security',
-                '--disable-features=VizDisplayCompositor',
-                '--no-first-run',
-                '--no-default-browser-check',
+                f'--user-data-dir={temp_profile}',  # Use temporary profile directory
+                '--no-first-run',  # Skip first run setup
+                '--no-default-browser-check',  # Don't check if Chrome is default
                 '--disable-session-crashed-bubble',  # Disable crash recovery dialog
                 '--disable-infobars',  # Disable info bars
                 '--no-crash-upload',  # Don't upload crash reports
@@ -2050,6 +2053,10 @@ class MainFrame(wx.Frame):
                 '--disable-background-timer-throttling',  # Disable background throttling
                 '--disable-restore-session-state',  # Don't restore session
                 '--disable-translate',  # Disable translate bars
+                '--disable-sync',  # Disable Chrome sync
+                '--disable-default-apps',  # Disable default apps
+                '--disable-extensions',  # Disable extensions
+                '--incognito',  # Use incognito mode for extra cleanliness
                 url
             ]
             
@@ -2122,16 +2129,19 @@ class MainFrame(wx.Frame):
                 
                 print(f"Target monitor: {target_monitor.x + offset_x}x{target_monitor.y + offset_y} ({target_monitor.width}x{target_monitor.height})")
                 
-                # Launch Chrome in fullscreen on target monitor
+                # Launch Chrome in fullscreen on target monitor with clean temporary profile
+                import tempfile
+                import os
+                temp_profile = os.path.join(tempfile.gettempdir(), 'chrome_agenda_profile')
+                
                 chrome_args = [
                     '--new-window',
                     '--start-fullscreen',
                     f'--window-position={target_monitor.x + offset_x},{target_monitor.y + offset_y}',
                     f'--window-size={target_monitor.width},{target_monitor.height}',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--no-first-run',
-                    '--no-default-browser-check',
+                    f'--user-data-dir={temp_profile}',  # Use temporary profile directory
+                    '--no-first-run',  # Skip first run setup
+                    '--no-default-browser-check',  # Don't check if Chrome is default
                     '--disable-session-crashed-bubble',  # Disable crash recovery dialog
                     '--disable-infobars',  # Disable info bars
                     '--no-crash-upload',  # Don't upload crash reports
@@ -2140,6 +2150,10 @@ class MainFrame(wx.Frame):
                     '--disable-background-timer-throttling',  # Disable background throttling
                     '--disable-restore-session-state',  # Don't restore session
                     '--disable-translate',  # Disable translate bars
+                    '--disable-sync',  # Disable Chrome sync
+                    '--disable-default-apps',  # Disable default apps
+                    '--disable-extensions',  # Disable extensions
+                    '--incognito',  # Use incognito mode for extra cleanliness
                     url
                 ]
                 
@@ -3271,6 +3285,26 @@ This appears to be a Google Slides embedding restriction. The presentation works
         # Stop Chrome monitor timer if it exists
         if hasattr(self, 'chrome_monitor_timer') and self.chrome_monitor_timer:
             self.chrome_monitor_timer.Stop()
+        
+        # Clean up temporary Chrome profile directories
+        try:
+            import tempfile
+            import os
+            import shutil
+            
+            hymn_profile = os.path.join(tempfile.gettempdir(), 'chrome_hymn_profile')
+            agenda_profile = os.path.join(tempfile.gettempdir(), 'chrome_agenda_profile')
+            
+            if os.path.exists(hymn_profile):
+                print("Cleaning up hymn Chrome profile...")
+                shutil.rmtree(hymn_profile, ignore_errors=True)
+                
+            if os.path.exists(agenda_profile):
+                print("Cleaning up agenda Chrome profile...")
+                shutil.rmtree(agenda_profile, ignore_errors=True)
+                
+        except Exception as e:
+            print(f"Error cleaning up Chrome profiles: {e}")
         
         # Close all projection windows
         if self.projection_frame:
