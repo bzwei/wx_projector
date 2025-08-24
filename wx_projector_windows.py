@@ -58,6 +58,20 @@ class ProjectionFrame(wx.Frame):
         # Create web view
         self.browser = wx.html2.WebView.New(self)
         
+        # Set user agent to mimic a regular browser for Google Slides compatibility
+        try:
+            # Try to set a standard Chrome user agent
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            if hasattr(self.browser, 'SetUserAgent'):
+                self.browser.SetUserAgent(user_agent)
+            elif hasattr(self.browser, 'GetBackend'):
+                # For different WebView backends
+                backend = self.browser.GetBackend()
+                if hasattr(backend, 'SetUserAgent'):
+                    backend.SetUserAgent(user_agent)
+        except Exception as e:
+            print(f"Could not set user agent: {e}")
+        
         # Bind events
         self.browser.Bind(wx.html2.EVT_WEBVIEW_LOADED, self.on_page_loaded)
         self.browser.Bind(wx.html2.EVT_WEBVIEW_ERROR, self.on_page_error)
@@ -75,8 +89,33 @@ class ProjectionFrame(wx.Frame):
         self.Raise()
         self.SetFocus()
         
-        # Load URL
-        self.browser.LoadURL(url)
+        # Load URL with custom headers for Google Slides
+        self.load_url_with_headers(url)
+        
+    def load_url_with_headers(self, url):
+        """Load URL with custom headers to avoid Google Drive help page"""
+        try:
+            # Try to load with custom headers if supported
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
+            
+            # Check if LoadURL supports headers
+            if hasattr(self.browser, 'LoadURLWithHeaders'):
+                self.browser.LoadURLWithHeaders(url, headers)
+            else:
+                # Fallback to regular LoadURL
+                self.browser.LoadURL(url)
+                
+        except Exception as e:
+            print(f"Error loading URL with headers: {e}")
+            # Fallback to regular LoadURL
+            self.browser.LoadURL(url)
         
         # Immediately set to fullscreen since we're already borderless
         wx.CallLater(100, self.ensure_complete_coverage)
@@ -1793,15 +1832,15 @@ class MainFrame(wx.Frame):
             # It's a hymn ID, get the Google Slides ID
             google_slides_id = self.hymns_data[slides_input.upper()]
             
-            # For public presentations, use the most reliable format
-            # Try preview format first (works better for public presentations)
-            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/preview"
+            # For public presentations, use the most WebView-friendly format
+            # Try published format first (works better in embedded contexts)
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/pub?start=false&loop=false&delayms=3000"
             
             print(f"Loading hymn {slides_input} -> {google_slides_id}")
             print(f"Using URL: {presentation_url}")
             
             # Debug: Test the URL format by opening it in a browser first
-            # Uncomment the next line to test the URL in your default browser:
+            # You can uncomment the next line to test the URL in your default browser:
             # import webbrowser; webbrowser.open(presentation_url)
             
             # Debug: Print the exact hymn data for verification
@@ -1823,8 +1862,8 @@ class MainFrame(wx.Frame):
                 # Assume it's a direct ID
                 google_slides_id = slides_input
                 
-            # For public presentations, use the most reliable format
-            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/preview"
+            # For public presentations, use the most WebView-friendly format
+            presentation_url = f"https://docs.google.com/presentation/d/{google_slides_id}/pub?start=false&loop=false&delayms=3000"
             print(f"Using direct slides ID: {google_slides_id}")
             print(f"Using URL: {presentation_url}")
         else:
@@ -1836,15 +1875,74 @@ class MainFrame(wx.Frame):
     
     def start_slides_projection_simple(self, url, presentation_id):
         """Start slides projection with simple fallback for public presentations"""
-        # Store fallback URLs for public presentations
+        # Store presentation ID for Chrome fallback
+        self.current_presentation_id = presentation_id
+        
+        # Store fallback URLs for public presentations (WebView-friendly order)
         self.slides_fallback_urls = [
             f"https://docs.google.com/presentation/d/{presentation_id}/embed?start=false&loop=false&delayms=3000",
-            f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
-            f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
+            f"https://docs.google.com/presentation/d/{presentation_id}/preview",
+            f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000"
         ]
         
         # Start with the provided URL
         self.start_slides_projection(url)
+    
+    def launch_chrome_for_slides(self, url):
+        """Launch Chrome browser for slides projection as fallback"""
+        try:
+            # Get target monitor for positioning
+            monitors = get_monitors()
+            target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+            
+            # Launch Chrome in fullscreen on target monitor
+            chrome_args = [
+                '--new-window',
+                '--start-fullscreen',
+                f'--window-position={target_monitor.x},{target_monitor.y}',
+                f'--window-size={target_monitor.width},{target_monitor.height}',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--no-first-run',
+                '--no-default-browser-check',
+                url
+            ]
+            
+            # Try different Chrome executable paths
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                "chrome.exe",  # If in PATH
+                "google-chrome"  # Linux/Mac style
+            ]
+            
+            chrome_launched = False
+            for chrome_path in chrome_paths:
+                try:
+                    import subprocess
+                    self.chrome_process = subprocess.Popen([chrome_path] + chrome_args)
+                    chrome_launched = True
+                    print(f"Launched Chrome from: {chrome_path}")
+                    break
+                except FileNotFoundError:
+                    continue
+                except Exception as e:
+                    print(f"Failed to launch Chrome from {chrome_path}: {e}")
+                    continue
+            
+            if chrome_launched:
+                self.is_projecting_slides = True
+                self.status_text.SetLabel("✓ Slides projection active in Chrome browser")
+                self.status_text.SetForegroundColour(wx.Colour(39, 174, 96))
+                if hasattr(self, 'slides_btn'):
+                    self.slides_btn.Enable(True)
+                self.update_all_projection_buttons()
+            else:
+                raise Exception("Chrome browser not found")
+                
+        except Exception as e:
+            print(f"Chrome launch failed: {e}")
+            raise e
     
     def test_and_start_slides_projection(self, url, presentation_id):
         """Test URL accessibility and start projection with best format"""
@@ -2003,8 +2101,21 @@ class MainFrame(wx.Frame):
             self.slides_projection_frame = ProjectionFrame(self, fallback_url, target_monitor, "slides")
             return
         
-        # No more fallback URLs, show error
-        self.status_text.SetLabel("Slides projection failed - check presentation permissions")
+        # No more fallback URLs, try Chrome as last resort
+        self.status_text.SetLabel("WebView failed - trying Chrome browser...")
+        self.status_text.SetForegroundColour(wx.Colour(243, 156, 18))  # Orange
+        
+        # Try launching Chrome directly as a last resort
+        try:
+            # Get the original URL that worked in browser
+            original_url = f"https://docs.google.com/presentation/d/{self.current_presentation_id}/preview"
+            self.launch_chrome_for_slides(original_url)
+            return
+        except Exception as chrome_error:
+            print(f"Chrome fallback failed: {chrome_error}")
+        
+        # Final error - nothing worked
+        self.status_text.SetLabel("Slides projection failed - all methods exhausted")
         self.status_text.SetForegroundColour(wx.Colour(231, 76, 60))
         
         # Reset button
@@ -2014,13 +2125,12 @@ class MainFrame(wx.Frame):
         # Show simplified error message for public presentations
         error_details = f"""Slides projection failed: {error_msg}
 
-Possible solutions:
-1. Check your internet connection
-2. Verify the presentation ID is correct
-3. Try entering the full Google Slides URL instead of just the ID
-4. The presentation might be temporarily unavailable
+All projection methods failed:
+1. WebView embedding (Google blocks embedded access)
+2. Alternative URL formats (all redirected to help page)
+3. Chrome browser fallback (not available or failed)
 
-If the problem persists, the presentation ID might be incorrect or the presentation might have been moved/deleted."""
+This appears to be a Google Slides embedding restriction. The presentation works in a regular browser but not in embedded contexts."""
         
         wx.MessageBox(error_details, "Slides Projection Error", wx.OK | wx.ICON_ERROR)
         
