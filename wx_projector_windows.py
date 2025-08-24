@@ -989,32 +989,47 @@ class MainFrame(wx.Frame):
 
     # Bible text handling methods
     def on_bible_text_change(self, event):
-        """Handle Bible text changes for autocomplete"""
-        try:
-            text = self.bible_ctrl.GetValue().strip()
+        """Handle text changes in bible input - show autocomplete for book names"""
+        text = self.bible_ctrl.GetValue().strip()
+        
+        if text:
+            # Hide existing popup if any
+            self.hide_bible_popup()
             
-            if len(text) >= 2:
-                # Find matching book names
-                matches = []
-                for book in self.bible_book_names:
-                    if book.lower().startswith(text.lower()):
-                        matches.append(book)
+            # Parse input to get book part
+            parts = re.split(r'[\s:]+', text)
+            if parts:
+                book_part = parts[0]
                 
-                # Also check for partial matches in the middle
-                if not matches:
-                    for book in self.bible_book_names:
-                        if text.lower() in book.lower():
-                            matches.append(book)
+                # Find matching books (case insensitive)
+                matches = [book for book in self.bible_book_names 
+                          if book.lower().startswith(book_part.lower())]
                 
-                if matches and len(matches) <= 10:  # Show up to 10 matches
-                    self.show_bible_popup(matches)
+                if len(matches) > 1 and len(book_part) > 0:
+                    # Show autocomplete popup for multiple matches
+                    self.show_bible_popup(matches[:10])  # Limit to 10 matches
+                elif len(matches) == 1:
+                    # Single match - check if it's exact or partial
+                    match = matches[0]
+                    if match.lower() == book_part.lower():
+                        # Exact match, parse verse if present
+                        self.parse_and_validate_bible_input(text)
+                    else:
+                        # Partial match - show helpful status
+                        self.bible_status.SetLabel(f"Match: {match} - Continue typing verse (e.g., 3:16)")
+                        self.bible_status.SetForegroundColour(wx.Colour(52, 152, 219))
+                elif len(book_part) > 2:
+                    # No matches after 3+ characters
+                    self.bible_status.SetLabel(f"No book found starting with '{book_part}'")
+                    self.bible_status.SetForegroundColour(wx.Colour(231, 76, 60))
                 else:
-                    self.hide_bible_popup()
-            else:
-                self.hide_bible_popup()
-                
-        except Exception as e:
-            pass
+                    # Still typing
+                    self.bible_status.SetLabel("Continue typing book name...")
+                    self.bible_status.SetForegroundColour(wx.Colour(127, 140, 141))
+        else:
+            self.hide_bible_popup()
+            self.bible_status.SetLabel("Enter book name and verse (e.g., 'John 3:16', 'Genesis 1:1')")
+            self.bible_status.SetForegroundColour(wx.Colour(127, 140, 141))
 
     def on_bible_key_down(self, event):
         """Handle special keys in Bible input"""
@@ -2233,8 +2248,260 @@ class MainFrame(wx.Frame):
 
     # Placeholder methods for not-yet-implemented functionality
     def on_bible_preview_click(self, event):
-        """Handle Bible preview button click"""
-        wx.MessageBox("Bible preview not yet implemented in Windows version", "Info", wx.OK | wx.ICON_INFORMATION)
+        """Handle bible preview button click"""
+        bible_input = self.bible_ctrl.GetValue().strip()
+        
+        if not bible_input:
+            wx.MessageBox("Please enter a bible verse (e.g., 'John 3:16')", "Error", wx.OK | wx.ICON_ERROR)
+            return
+            
+        # Parse and validate input
+        parsed = self.parse_and_validate_bible_input(bible_input)
+        if not parsed:
+            return
+            
+        # Show preview
+        self.show_bible_preview(parsed)
+    
+    def parse_and_validate_bible_input(self, text):
+        """Parse and validate bible input with enhanced flexibility"""
+        try:
+            text = text.strip()
+            if not text:
+                return None
+                
+            # Split input into parts
+            parts = re.split(r'[\s:]+', text)
+            
+            # Try to identify book, chapter, and verse from parts
+            book_name = None
+            chapter = 1
+            verse = 1
+            
+            # Look for book name in the parts (could be anywhere)
+            book_start_idx = None
+            book_end_idx = None
+            
+            # First, try to find a complete book name match
+            for i in range(len(parts)):
+                for j in range(i + 1, len(parts) + 1):
+                    potential_book = ' '.join(parts[i:j]).lower()
+                    
+                    # Check if this matches any book name
+                    for name in self.bible_book_names:
+                        if name.lower() == potential_book:
+                            book_name = name
+                            book_start_idx = i
+                            book_end_idx = j
+                            break
+                    if book_name:
+                        break
+                if book_name:
+                    break
+            
+            # If no exact match, try partial matches
+            if not book_name:
+                for name in self.bible_book_names:
+                    if text.lower().find(name.lower()) != -1:
+                        book_name = name
+                        # Find where this book appears in the original text
+                        book_pos = text.lower().find(name.lower())
+                        before_book = text[:book_pos].strip()
+                        after_book = text[book_pos + len(name):].strip()
+                        
+                        # Parse numbers before and after the book
+                        numbers = []
+                        if before_book:
+                            numbers.extend([int(x) for x in re.findall(r'\d+', before_book)])
+                        if after_book:
+                            numbers.extend([int(x) for x in re.findall(r'\d+', after_book)])
+                        
+                        # Assign chapter and verse from numbers
+                        if len(numbers) >= 2:
+                            chapter = numbers[0]
+                            verse = numbers[1]
+                        elif len(numbers) == 1:
+                            chapter = numbers[0]
+                            verse = 1
+                        break
+            else:
+                # Extract numbers that aren't part of the book name
+                number_parts = []
+                for i, part in enumerate(parts):
+                    if i < book_start_idx or i >= book_end_idx:
+                        if part.isdigit():
+                            number_parts.append(int(part))
+                
+                # Assign chapter and verse from extracted numbers
+                if len(number_parts) >= 2:
+                    chapter = number_parts[0]
+                    verse = number_parts[1]
+                elif len(number_parts) == 1:
+                    chapter = number_parts[0]
+                    verse = 1
+            
+            if not book_name:
+                self.bible_status.SetLabel("Book not found - try typing book name")
+                self.bible_status.SetForegroundColour(wx.Colour(231, 76, 60))
+                return None
+            
+            # Validate and adjust chapter number
+            book_info = self.bible_books.get(book_name)
+            if book_info:
+                max_chapters = book_info[1]
+                if chapter < 1:
+                    chapter = 1
+                elif chapter > max_chapters:
+                    chapter = max_chapters
+                    self.bible_status.SetLabel(f"{book_name} only has {max_chapters} chapters - using chapter {chapter}")
+                    self.bible_status.SetForegroundColour(wx.Colour(243, 156, 18))
+            
+            # Return parsed bible info
+            return {
+                'book': book_name,
+                'book_id': book_info[0] if book_info else 1,
+                'chapter': chapter,
+                'verse': verse,
+                'verse_end': verse
+            }
+            
+        except Exception as e:
+            print(f"Error parsing bible input: {e}")
+            self.bible_status.SetLabel("Could not parse Bible reference. Try format like 'John 3:16'")
+            self.bible_status.SetForegroundColour(wx.Colour(231, 76, 60))
+            return None
+    
+    def show_bible_preview(self, bible_info):
+        """Show Bible chapter preview with clickable verses"""
+        try:
+            # Store current bible info for navigation
+            self.current_bible_info = bible_info.copy()
+            
+            # Get selected bible versions from checkboxes
+            selected_versions = []
+            for version_key, checkbox in self.version_checkboxes.items():
+                if checkbox.GetValue():
+                    selected_versions.append(version_key)
+            
+            if not selected_versions:
+                wx.MessageBox("Please select at least one Bible version to display.", "No Version Selected", wx.OK | wx.ICON_WARNING)
+                return
+            
+            # Clear existing preview
+            self.bible_verses_sizer.Clear(True)
+            
+            # Update header
+            book_name = bible_info['book']
+            chapter = bible_info['chapter']
+            self.preview_header.SetLabel(f"{book_name} Chapter {chapter}")
+            
+            # Enable chapter navigation buttons
+            self.prev_chapter_btn.Enable(chapter > 1)
+            if book_name in self.bible_books:
+                max_chapters = self.bible_books[book_name][1]
+                self.next_chapter_btn.Enable(chapter < max_chapters)
+            else:
+                self.next_chapter_btn.Enable(True)  # Allow navigation if we don't know the limit
+            
+            # Load content for all selected versions
+            versions_data = {}
+            
+            for version in selected_versions:
+                book_id = bible_info['book_id']
+                chapter = bible_info['chapter']
+                
+                vol_folder = f"vol{book_id:02d}"
+                chapter_file = f"chap{chapter:03d}.txt"
+                file_path = os.path.join("books", version, vol_folder, chapter_file)
+                
+                if not os.path.exists(file_path):
+                    continue
+                    
+                # Load chapter content with appropriate encoding
+                verses = []
+                try:
+                    if version == 'cuv':
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                    else:
+                        with open(file_path, 'r', encoding='latin-1') as f:
+                            content = f.read()
+                    
+                    # Split into verses
+                    verse_lines = content.strip().split('\n')
+                    for line in verse_lines:
+                        if line.strip():
+                            verses.append(line.strip())
+                    
+                    versions_data[version] = verses
+                    
+                except Exception as e:
+                    print(f"Error loading {version} {book_name} {chapter}: {e}")
+                    continue
+            
+            if not versions_data:
+                # Show message that no Bible files were found
+                no_data_text = wx.StaticText(self.bible_preview_scroll, 
+                    label=f"No Bible files found for {book_name} {chapter}\nPlace Bible files in books/ folder")
+                no_data_text.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL))
+                no_data_text.SetForegroundColour(wx.Colour(127, 140, 141))
+                self.bible_verses_sizer.Add(no_data_text, 0, wx.ALL, 10)
+            else:
+                # Find maximum number of verses
+                max_verses = max(len(verses) for verses in versions_data.values())
+                
+                # Create verse rows
+                for verse_num in range(1, max_verses + 1):
+                    verse_panel = wx.Panel(self.bible_preview_scroll)
+                    verse_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+                    verse_sizer = wx.BoxSizer(wx.VERTICAL)
+                    
+                    # Verse number header
+                    verse_header = wx.StaticText(verse_panel, label=f"Verse {verse_num}")
+                    verse_header.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+                    verse_header.SetForegroundColour(wx.Colour(52, 152, 219))
+                    verse_sizer.Add(verse_header, 0, wx.ALL, 2)
+                    
+                    # Add text for each version
+                    for version_key in selected_versions:
+                        if version_key in versions_data:
+                            verses = versions_data[version_key]
+                            if verse_num <= len(verses):
+                                verse_text = verses[verse_num - 1]
+                                
+                                # Create clickable text
+                                text_ctrl = wx.StaticText(verse_panel, label=verse_text)
+                                text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+                                
+                                # Color code by version
+                                if version_key == 'cuv':
+                                    text_ctrl.SetForegroundColour(wx.Colour(0, 0, 0))  # Black
+                                elif version_key == 'niv':
+                                    text_ctrl.SetForegroundColour(wx.Colour(0, 100, 0))  # Dark green
+                                elif version_key == 'kjv':
+                                    text_ctrl.SetForegroundColour(wx.Colour(100, 0, 100))  # Purple
+                                elif version_key == 'nas':
+                                    text_ctrl.SetForegroundColour(wx.Colour(0, 0, 150))  # Dark blue
+                                else:
+                                    text_ctrl.SetForegroundColour(wx.Colour(100, 100, 0))  # Dark yellow
+                                
+                                verse_sizer.Add(text_ctrl, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+                    
+                    verse_panel.SetSizer(verse_sizer)
+                    self.bible_verses_sizer.Add(verse_panel, 0, wx.EXPAND | wx.ALL, 2)
+            
+            # Refresh layout
+            self.bible_preview_scroll.Layout()
+            self.bible_preview_scroll.FitInside()
+            self.bible_preview_scroll.Scroll(0, 0)  # Scroll to top
+            
+        except Exception as e:
+            print(f"Error showing bible preview: {e}")
+            wx.MessageBox(f"Error loading Bible preview: {str(e)}", "Error", wx.OK | wx.ICON_ERROR)
+    
+    def load_bible_preview(self, bible_info):
+        """Load Bible preview for chapter navigation"""
+        self.show_bible_preview(bible_info)
 
     def on_bible_history_click(self, event):
         """Handle Bible history button click"""
