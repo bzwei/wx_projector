@@ -1891,9 +1891,12 @@ class MainFrame(wx.Frame):
     def launch_chrome_for_slides(self, url):
         """Launch Chrome browser for slides projection as fallback"""
         try:
+            print(f"Attempting to launch Chrome with URL: {url}")
+            
             # Get target monitor for positioning
             monitors = get_monitors()
             target_monitor = monitors[1] if len(monitors) >= 2 else monitors[0]
+            print(f"Target monitor: {target_monitor.x}x{target_monitor.y} ({target_monitor.width}x{target_monitor.height})")
             
             # Launch Chrome in fullscreen on target monitor
             chrome_args = [
@@ -1919,12 +1922,14 @@ class MainFrame(wx.Frame):
             chrome_launched = False
             for chrome_path in chrome_paths:
                 try:
+                    print(f"Trying Chrome path: {chrome_path}")
                     import subprocess
                     self.chrome_process = subprocess.Popen([chrome_path] + chrome_args)
                     chrome_launched = True
-                    print(f"Launched Chrome from: {chrome_path}")
+                    print(f"✓ Successfully launched Chrome from: {chrome_path}")
                     break
                 except FileNotFoundError:
+                    print(f"Chrome not found at: {chrome_path}")
                     continue
                 except Exception as e:
                     print(f"Failed to launch Chrome from {chrome_path}: {e}")
@@ -1937,7 +1942,9 @@ class MainFrame(wx.Frame):
                 if hasattr(self, 'slides_btn'):
                     self.slides_btn.Enable(True)
                 self.update_all_projection_buttons()
+                print("Chrome browser projection setup complete")
             else:
+                print("❌ Chrome browser not found in any standard location")
                 raise Exception("Chrome browser not found")
                 
         except Exception as e:
@@ -2037,16 +2044,17 @@ class MainFrame(wx.Frame):
                 if match:
                     presentation_id = match.group(1)
             
-            # Store alternative URLs to try if the first one fails
-            self.slides_fallback_urls = []
-            if presentation_id:
-                # Alternative URL formats to try
-                self.slides_fallback_urls = [
-                    f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
-                    f"https://docs.google.com/presentation/d/{presentation_id}/preview",
-                    f"https://docs.google.com/presentation/d/{presentation_id}/edit?usp=sharing",
-                    f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
-                ]
+            # Store alternative URLs to try if the first one fails (only if not already set)
+            if not hasattr(self, 'slides_fallback_urls') or not self.slides_fallback_urls:
+                self.slides_fallback_urls = []
+                if presentation_id:
+                    # Alternative URL formats to try
+                    self.slides_fallback_urls = [
+                        f"https://docs.google.com/presentation/d/{presentation_id}/present?start=false&loop=false&delayms=3000",
+                        f"https://docs.google.com/presentation/d/{presentation_id}/preview",
+                        f"https://docs.google.com/presentation/d/{presentation_id}/edit?usp=sharing",
+                        f"https://docs.google.com/presentation/d/{presentation_id}/pub?start=false&loop=false&delayms=3000"
+                    ]
             
             # Update status immediately
             self.status_text.SetLabel("Creating slides projection...")
@@ -2102,15 +2110,21 @@ class MainFrame(wx.Frame):
             return
         
         # No more fallback URLs, try Chrome as last resort
+        print("All WebView URLs failed, trying Chrome browser fallback...")
         self.status_text.SetLabel("WebView failed - trying Chrome browser...")
         self.status_text.SetForegroundColour(wx.Colour(243, 156, 18))  # Orange
         
         # Try launching Chrome directly as a last resort
         try:
-            # Get the original URL that worked in browser
-            original_url = f"https://docs.google.com/presentation/d/{self.current_presentation_id}/preview"
-            self.launch_chrome_for_slides(original_url)
-            return
+            # Check if we have the presentation ID
+            if hasattr(self, 'current_presentation_id') and self.current_presentation_id:
+                original_url = f"https://docs.google.com/presentation/d/{self.current_presentation_id}/preview"
+                print(f"Launching Chrome with URL: {original_url}")
+                self.launch_chrome_for_slides(original_url)
+                return
+            else:
+                print("No current_presentation_id available for Chrome fallback")
+                raise Exception("No presentation ID available for Chrome fallback")
         except Exception as chrome_error:
             print(f"Chrome fallback failed: {chrome_error}")
         
