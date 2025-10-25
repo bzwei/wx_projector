@@ -31,28 +31,50 @@ cat > "$SCRIPT_DIR/$BUNDLE_NAME/Contents/MacOS/webpage_projector" << 'LAUNCHER_E
 #!/bin/bash
 # Webpage Projector Launcher
 
+# Redirect all output to log file
+exec >> ~/webpage_projector_launch.log 2>&1
+echo "=== Launch attempt at $(date) ==="
+
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echo "Script directory: $SCRIPT_DIR"
+
 # Go up to the project root (3 levels up from MacOS folder)
 PROJECT_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
+echo "Project directory: $PROJECT_DIR"
 
 # Change to project directory
-cd "$PROJECT_DIR"
+cd "$PROJECT_DIR" || {
+    osascript -e 'display dialog "Failed to change to project directory" buttons {"OK"} default button "OK" with icon stop with title "Projector"'
+    exit 1
+}
 
 # Check if virtual environment exists
 if [ ! -d ".venv" ]; then
-    # Show error in a dialog
+    echo "ERROR: Virtual environment not found at $PROJECT_DIR/.venv"
     osascript -e 'display dialog "Virtual environment not found. Please run install.sh first." buttons {"OK"} default button "OK" with icon stop with title "Projector"'
     exit 1
 fi
 
-# Activate virtual environment and run
+echo "Virtual environment found"
+echo "Activating virtual environment..."
 source .venv/bin/activate
-python src/main.py 2>&1 | tee ~/webpage_projector.log
 
-# If there's an error, show it
-if [ $? -ne 0 ]; then
+echo "Launching Python application..."
+# Run in background so the launcher can exit
+python src/main.py >> ~/webpage_projector.log 2>&1 &
+
+# Give it a moment to start
+sleep 1
+
+# Check if it's still running
+if ps -p $! > /dev/null; then
+    echo "Application started successfully (PID: $!)"
+    exit 0
+else
+    echo "ERROR: Application failed to start"
     osascript -e 'display dialog "Application failed to start. Check ~/webpage_projector.log for details." buttons {"OK"} default button "OK" with icon stop with title "Projector"'
+    exit 1
 fi
 LAUNCHER_EOF
 
@@ -113,11 +135,18 @@ echo ""
 echo "The app '$BUNDLE_NAME' has been created in:"
 echo "  $SCRIPT_DIR"
 echo ""
+echo "IMPORTANT: Keep '$BUNDLE_NAME' in this directory!"
+echo "  The app needs to stay here to access the Python environment."
+echo ""
 echo "You can now:"
 echo "  1. Double-click '$BUNDLE_NAME' to launch"
-echo "  2. Drag it to your Applications folder"
-echo "  3. Drag it to your Dock for quick access"
-echo "  4. Create a desktop alias (right-click > Make Alias)"
+echo "  2. Drag it to your Dock for quick access"
+echo "  3. Create an alias:"
+echo "       Right-click '$BUNDLE_NAME' > Make Alias"
+echo "       Then move the alias to Applications or Desktop"
+echo ""
+echo "Or run this command to create an alias in Applications:"
+echo "  ln -s \"$SCRIPT_DIR/$BUNDLE_NAME\" ~/Applications/"
 echo ""
 echo "Note: The first time you open it, you may need to:"
 echo "  - Right-click > Open (to bypass Gatekeeper)"
