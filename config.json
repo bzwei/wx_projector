@@ -1,0 +1,30 @@
+{
+  "window": {
+    "control_panel": {
+      "width": 1222,
+      "height": 873,
+      "x": 238,
+      "y": 49
+    }
+  },
+  "display": {
+    "preferred_display_index": 1,
+    "auto_detect": true
+  },
+  "bible": {
+    "default_versions": [
+      "cuv"
+    ],
+    "font_size_chinese": 80,
+    "font_size_english": 76
+  },
+  "agenda": {
+    "slides_id": "1Mf5HudddTgDeevAskjl7YTUZC9d7txnFRHKGj1perZs"
+  },
+  "history": {
+    "max_history_size": 30
+  },
+  "google_meet": {
+    "meeting_url": "https://meet.google.com/stv-ubsq-ben"
+  }
+}

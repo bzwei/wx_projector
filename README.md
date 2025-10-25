@@ -1,145 +1,264 @@
-# Web Page Projector
+# Webpage Projector
 
-A Python desktop application that displays web pages on a second screen in fullscreen mode without borders.
-
-## Features
-
-- Simple GUI with URL input
-- Automatic detection of multiple monitors
-- Fullscreen projection on second screen
-- Borderless display for clean presentation
-- URL validation and formatting
-- Easy start/stop projection controls
-- **Enhanced Google Slides support with hymn lookup**
-- CSV-based hymn database with autocomplete
-- Smart textbox that recognizes hymn names and Slides IDs
+Desktop application for projecting Bible verses, hymns, and web content to a secondary display. Built for church presentations.
 
 ## Requirements
 
-- Python 3.7 or higher
-- Two monitors (recommended, but works with single monitor)
-- macOS, Windows, or Linux
+- Python 3.12 or higher
+- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
+- macOS (primary), Windows (supported)
+- Dual monitor setup recommended
 
-## Installation
+## Quick Start
 
-1. Clone or download this project
-2. Install required dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-1. Run the application:
+### Option 1: Automated Installation (Recommended for macOS)
 
 ```bash
-python wx_projector.py
+# One-step installation
+./install.sh
+
+# Run the application
+./run.sh
 ```
 
-Or use the original tkinter version:
+That's it! The `install.sh` script will:
+- Check Python version (requires 3.12+)
+- Install `uv` package manager if needed
+- Create virtual environment
+- Install all dependencies
+- Create default config.json if missing
+
+### Creating a Desktop Shortcut (macOS)
+
+Want to launch with a double-click? Create a macOS app:
 
 ```bash
-python native_projector.py
+# After installation, create an app bundle
+./create_app.sh
+
+# Now you can:
+# - Double-click "Projector.app" to launch
+# - Drag it to Applications folder
+# - Add it to your Dock
+# - Create a desktop alias
 ```
 
-2. Enter a URL in the text box (protocol http:// or https:// is optional)
-3. Click "Project to Second Screen" or press Enter
-4. The webpage will open in fullscreen mode on your second monitor
-5. Click "Stop Projection" to close the projected window
+See [DESKTOP_SHORTCUT.md](DESKTOP_SHORTCUT.md) for detailed instructions and other methods.
 
-## Supported URL Formats
+### Option 2: Manual Installation
 
-- `google.com` (automatically becomes `https://google.com`)
-- `http://example.com`
-- `https://www.example.com`
-- `localhost:3000`
-- `192.168.1.100:8080`
+#### 1. Install uv (if not already installed)
 
-## Keyboard Shortcuts
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-- **Enter**: Start projection (when URL field is focused)
-- **ESC**: Close projection window (when projection window is focused)
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-## Monitor Detection
+#### 2. Clone and Setup
 
-The application automatically detects available monitors:
-- With 2+ monitors: Projects to the second monitor
-- With 1 monitor: Projects to the primary monitor
-- Shows monitor count in the interface
+```bash
+# Clone repository
+cd webpage_projector
+
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On macOS/Linux
+# .venv\Scripts\activate   # On Windows
+
+# Install core dependencies
+uv pip install -e .
+```
+
+#### 3. Run the Application
+
+```bash
+# Easiest: Use the run script
+./run.sh
+
+# Or run using uv (recommended - ensures correct Python version)
+uv run python src/main.py
+
+# Or activate venv first, then run
+source .venv/bin/activate
+python src/main.py
+```
+
+## Optional Features
+
+### Google Meet Automation (macOS Only)
+
+The application includes automated Google Meet joining and screen sharing using **macOS native automation** (AppleScript + Accessibility APIs).
+
+**Requirements:**
+- macOS only (uses AppleScript and System Events)
+- Google Chrome installed
+- Accessibility permissions granted to Terminal/your IDE
+- **Chrome JavaScript from AppleScript enabled** (optional, for best results)
+
+**Features:**
+- Automatically opens meeting URL in Chrome
+- Clicks "Join now" button (using JavaScript injection or keyboard fallback)
+- Manual screen sharing (automation disabled for reliability)
+- No browser automation detection (uses macOS UI automation)
+
+**Important Notes:**
+- This is **macOS-specific** and will not work on Windows/Linux
+- Requires you to be **already logged into Google** in Chrome
+- First time: You may need to grant Accessibility permissions when prompted
+
+**Setup Instructions:**
+
+1. **Grant Accessibility Permissions:**
+   - When you first use the feature, macOS will prompt for permissions
+   - Go to **System Settings** → **Privacy & Security** → **Accessibility**
+   - Enable your Terminal app or IDE (whichever you're running the app from)
+
+2. **Enable JavaScript from AppleScript in Chrome** (Recommended):
+   - Open Google Chrome
+   - From the menu bar: **View** → **Developer** → **Allow JavaScript from Apple Events**
+   - This allows more reliable button clicking
+   - **If you skip this**: The app will fall back to keyboard shortcuts (still works!)
+
+**Fallback:**
+If automation fails or you're not on macOS, the button will simply open the meeting URL in your default browser for manual joining.
+
+## Development
+
+### Install All Dependencies (including dev tools)
+
+```bash
+# Install everything
+uv pip install -e ".[dev]"
+```
+
+### Project Structure
+
+```
+webpage_projector/
+├── src/
+│   ├── main.py                 # Entry point
+│   ├── core/                   # Core functionality
+│   │   ├── bible_engine.py     # Bible verse handling
+│   │   ├── content_renderer.py # HTML rendering
+│   │   └── hymn_repository.py  # Hymn data
+│   ├── ui/                     # User interface
+│   │   ├── control_panel.py
+│   │   ├── projection_window.py
+│   │   └── web/                # Web assets (HTML/JS/CSS)
+│   └── utils/                  # Utilities
+├── books/                      # Bible text files
+├── tests/                      # Test files
+├── pyproject.toml             # Project configuration
+└── config.json                # User configuration
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+uv pip install -e ".[dev]"
+
+# Run tests (using uv run)
+uv run pytest
+
+# Or activate venv first
+source .venv/bin/activate
+pytest
+```
+
+### Code Quality
+
+```bash
+# Format code (using uv run)
+uv run black src/
+
+# Lint code (using uv run)
+uv run ruff check src/
+```
+
+## Configuration
+
+Configuration is stored in `config.json`:
+
+```json
+{
+    "agenda_slides_id": "your-google-slides-id",
+    "bible_font_sizes": {
+        "chinese": 28,
+        "english": 24
+    }
+}
+```
 
 ## Dependencies
 
-- `wxpython`: For native GUI and web content display
-- `screeninfo`: For multi-monitor detection
+### Core (Required)
+- **wxPython** (4.2.3+) - GUI framework
+- **screeninfo** (0.8.1+) - Multi-monitor detection
 
-## Hymn Database Setup
+### Development
+- **pytest** - Testing framework
+- **black** - Code formatter
+- **ruff** - Fast linter
 
-The application expects a `hymns.csv` file in the project directory with two columns:
-1. **Hymn ID**: Numeric ID (e.g., "123") or letter + numeric (e.g., "A123", "C456")
-2. **Google Slides ID**: The corresponding Google Slides presentation ID
+## Common Commands
 
-Example `hymns.csv`:
-```csv
-Hymn ID,Google Slides ID
-123,1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
-A456,1Abc123DefGhIjKlMnOpQrStUvWxYz456789AbCdEf
-C789,1XyZ987WvUtSrQpOnMlKjIhGfEdCbA654321ZyXwVu
+```bash
+# Install core dependencies only
+uv pip install -e .
+
+# Install with development tools
+uv pip install -e ".[dev]"
+
+# Update dependencies
+uv pip install --upgrade -e .
+
+# Sync dependencies (match pyproject.toml exactly)
+uv pip sync
+
+# Run application (using uv run - recommended)
+uv run python src/main.py
+
+# Run tests
+uv run pytest
+
+# Format and lint code
+uv run black src/
+uv run ruff check src/
 ```
-
-### Using the Hymn Lookup Feature
-
-1. **Enter Hymn ID**: Type a hymn ID (e.g., "123", "A456", "C789")
-2. **ID Recognition**: The app detects valid hymn IDs and shows the associated Slides ID
-3. **Browse by Category**: Click the 🎵 button to browse hymns organized by:
-   - Numeric IDs (123, 456, etc.)
-   - A-Series (A123, A456, etc.)  
-   - C-Series (C123, C456, etc.)
-4. **Direct Entry**: You can still enter Google Slides IDs or URLs directly
-5. **Auto-lookup**: Hymn IDs are automatically converted to Slides URLs for presentation
 
 ## Troubleshooting
 
-### "No module named 'wx'" Error
-Install the wxPython dependency:
+### "wx module not found"
 ```bash
-pip install wxpython
+uv pip install wxpython
 ```
 
-### Windows-Specific Setup
-For enhanced Windows support with better fullscreen handling:
+### Virtual environment not activated
 ```bash
-pip install -r requirements_windows.txt
-```
-Then run the Windows-optimized version:
-```bash
-python wx_projector_windows.py
+source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
 ```
 
-### Projection Window Not Appearing
-- Check that the URL is valid and accessible
-- Ensure the target website allows embedding
-- Try a different URL (some sites block iframe embedding)
+## Features
 
-### Single Monitor Setup
-The app works with a single monitor but is designed for dual-monitor setups. With one monitor, the projection will appear on your primary screen.
-
-## Platform-Specific Notes
-
-### macOS
-- May require allowing Python to control your computer in System Preferences > Security & Privacy > Privacy > Accessibility
-
-### Windows
-- Works with Windows 10/11
-- Multiple monitor detection should work automatically
-- For best results, use the Windows-optimized version (`wx_projector_windows.py`)
-- Supports Edge WebView2 for modern web standards
-- Enhanced fullscreen handling for Windows display scaling
-
-### Linux
-- Requires X11 or Wayland
-- May need additional packages depending on your distribution
+- ✅ Bible verse projection with infinite scroll
+- ✅ Hymn projection (Google Slides integration)
+- ✅ Agenda projection (separate window)
+- ✅ Multi-version Bible support (CUV, KJV, etc.)
+- ✅ Independent window state management
+- ✅ Google Meet automation (macOS only - using AppleScript)
+- ✅ Dual monitor support
+- ✅ Customizable font sizes
+- ✅ Desktop shortcut support (create clickable app icon)
 
 ## License
 
-This project is open source and available under the MIT License.
+See LICENSE file for details.
+
+## Contributing
+
+This is a church project. Contact the maintainer for contribution guidelines.

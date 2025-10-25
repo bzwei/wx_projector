@@ -1,0 +1,155 @@
+# Webpage Projector Constitution
+
+## Code Quality Principles
+
+### 1. Python Code Standards
+- **PEP 8 Compliance**: All Python code must follow PEP 8 style guidelines
+- **Type Hints**: Use type hints for all function signatures and class attributes
+- **Docstrings**: Every public module, class, and function must have comprehensive docstrings following Google or NumPy style
+- **DRY Principle**: Avoid code duplication; extract common logic into reusable functions or classes
+- **Single Responsibility**: Each module, class, and function should have one clear purpose
+- **Maximum Function Length**: Functions should not exceed 50 lines; refactor complex functions into smaller, composable units
+
+### 2. Code Organization
+- **Module Structure**: Maintain clear separation between UI components, business logic, and data handling
+- **Dependency Management**: Use `uv` exclusively for dependency management; document all dependencies with version constraints
+- **Configuration**: Store all configurable values in dedicated configuration files, never hardcode paths or settings
+- **Error Handling**: Use explicit exception handling with specific exception types; log errors with appropriate context
+- **Virtual Environment**: Always activate the virtual environment before running any commands or scripts
+
+### 3. Code Review Standards
+- **No Direct Commits**: All changes must go through pull request review
+- **Self-Review First**: Author must review their own diff before requesting review
+- **Comment Clarity**: Explain "why" in comments, not "what" (code should be self-documenting)
+- **TODO Comments**: Must include issue number and owner; no orphaned TODOs
+
+## Testing Standards
+
+### 4. Test Coverage Requirements
+- **Minimum Coverage**: Maintain at least 80% code coverage for all modules
+- **Critical Path Coverage**: 100% coverage required for core projection and display logic
+- **UI Testing**: All UI components must have integration tests verifying user interactions
+- **Edge Cases**: Tests must include boundary conditions, error states, and null/empty inputs
+
+### 5. Test Quality
+- **Test Isolation**: Each test must be independent and not rely on execution order
+- **Test Naming**: Use descriptive names following `test_<function>_<scenario>_<expected_result>` pattern
+- **Fixtures**: Use pytest fixtures for common test setup; avoid duplicated setup code
+- **Mocking**: Mock external dependencies (file system, network, displays) to ensure fast, reliable tests
+- **Assertions**: Use specific assertions with clear failure messages
+
+### 6. Testing Workflow
+- **Test-Driven Development**: Write tests before implementing new features when feasible
+- **Run Before Commit**: All tests must pass before committing code
+- **CI/CD Integration**: Automated test suite must run on every pull request
+- **Performance Tests**: Include tests for startup time, window rendering, and memory usage
+
+## User Experience Consistency
+
+### 7. Interface Design
+- **Window Management**: Main control panel and projection window must maintain consistent state
+- **Full Screen Behavior**: Projection window must reliably enter/exit full screen on secondary display
+- **Responsive UI**: Control panel must remain responsive during all projection operations
+- **Visual Feedback**: Provide immediate visual feedback for all user actions (loading states, confirmations, errors)
+- **Keyboard Shortcuts**: Implement consistent keyboard shortcuts for common operations; document all shortcuts
+
+### 8. Error Handling & User Communication
+- **User-Friendly Messages**: Display clear, actionable error messages without technical jargon
+- **Graceful Degradation**: Application should continue functioning when non-critical features fail
+- **Recovery Options**: Provide clear recovery paths when errors occur (retry, reset, cancel)
+- **Warning Dialogs**: Warn users before destructive actions; allow undo where possible
+- **Status Indicators**: Always show application state (loading, ready, error, projecting)
+
+### 9. Accessibility & Usability
+- **Font Sizing**: Support adjustable font sizes in both control panel and projection view
+- **High Contrast**: Ensure readable contrast ratios for all text and UI elements
+- **Screen Reader Support**: Label all UI controls appropriately for accessibility
+- **Navigation Flow**: Maintain logical tab order and keyboard navigation throughout UI
+- **Consistent Layout**: Use consistent spacing, alignment, and visual hierarchy across all windows
+
+## Performance Requirements
+
+### 10. Application Performance
+- **Startup Time**: Application must launch in under 3 seconds on modern hardware
+- **Window Rendering**: Projection window must render content within 500ms of selection
+- **Memory Usage**: Baseline memory footprint should not exceed 150MB
+- **Memory Leaks**: No memory leaks allowed; memory usage must remain stable during extended use
+- **CPU Usage**: Idle CPU usage must be under 2%; active projection should not exceed 10%
+
+### 11. Display & Rendering Performance
+- **Frame Rate**: Maintain 60 FPS for any animations or transitions
+- **Image Loading**: Images must load and display within 1 second
+- **Web Content**: Embedded web pages must render without blocking the UI thread
+- **Multi-Monitor**: Support for multiple monitors must not degrade performance
+- **Resource Cleanup**: Properly dispose of display resources when closing projection windows
+
+### 12. Data & File Handling
+- **File Operations**: File I/O must be asynchronous to prevent UI blocking
+- **Large Datasets**: Support CSV files with up to 10,000 rows without performance degradation
+- **Caching**: Implement intelligent caching for frequently accessed resources (images, web content)
+- **Background Processing**: Use background threads for intensive operations (image processing, data loading)
+- **Lazy Loading**: Load resources on-demand rather than all at startup
+
+## Development Workflow
+
+### 13. Version Control
+- **Commit Messages**: Follow conventional commits format (feat:, fix:, docs:, refactor:, test:)
+- **Branch Naming**: Use descriptive branch names with prefixes (feature/, bugfix/, hotfix/)
+- **Atomic Commits**: Each commit should represent a single logical change
+- **No Commented Code**: Remove commented-out code; use version control for history
+- **Clean History**: Squash work-in-progress commits before merging
+
+### 14. Documentation
+- **README Updates**: Update README.md when adding features or changing setup procedures
+- **Inline Documentation**: Document complex algorithms, non-obvious logic, and workarounds
+- **API Documentation**: Generate and maintain API docs for all public interfaces
+- **Changelog**: Maintain CHANGELOG.md following Keep a Changelog format
+- **Architecture Docs**: Document key architectural decisions and system design
+
+### 15. Dependency & Environment Management
+- **Pinned Versions**: Lock all dependency versions for reproducible builds
+- **Security Updates**: Review and apply security updates monthly
+- **Python Version**: Maintain compatibility with Python 3.12+
+- **UV Tool**: Use `uv` for all dependency operations (install, update, remove)
+- **Environment Variables**: Document all required environment variables in README
+
+## Security & Privacy
+
+### 16. Security Practices
+- **Input Validation**: Validate and sanitize all user inputs
+- **File Path Safety**: Use path validation to prevent directory traversal attacks
+- **External Content**: Sanitize URLs and web content before rendering
+- **Credentials**: Never commit credentials, API keys, or sensitive data
+- **Dependencies**: Regularly audit dependencies for known vulnerabilities
+
+### 17. Data Privacy
+- **Local Storage**: All user data must be stored locally; no external transmission without explicit consent
+- **User Preferences**: Respect user privacy settings and preferences
+- **Logging**: Avoid logging sensitive information (file paths may be logged for debugging)
+- **Crash Reports**: Anonymize any crash reports before collection
+
+## Quality Assurance
+
+### 18. Pre-Release Checklist
+- [ ] All tests passing
+- [ ] Code coverage meets minimum threshold (80%)
+- [ ] No linter errors or warnings
+- [ ] Documentation updated
+- [ ] Changelog updated
+- [ ] Performance benchmarks within acceptable ranges
+- [ ] Manual testing on macOS (primary platform)
+- [ ] Multi-monitor setup tested
+- [ ] Memory leak testing completed
+
+### 19. Continuous Improvement
+- **Performance Monitoring**: Track and log performance metrics over time
+- **User Feedback**: Maintain a system for collecting and addressing user feedback
+- **Code Metrics**: Monitor code quality metrics (complexity, duplication, coverage)
+- **Technical Debt**: Dedicate time each sprint to address technical debt
+- **Retrospectives**: Conduct regular retrospectives to improve development practices
+
+---
+
+**Last Updated**: 2025-10-12
+**Version**: 1.0.0
+**Maintainer**: Development Team

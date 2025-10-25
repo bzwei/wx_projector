@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCF Bible and Hymn Projector</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">NCF Bible and Hymn Projector</h1>
+            <div class="status-bar">
+                <span class="status-item" id="monitor-status">
+                    <span class="status-icon">🖥️</span>
+                    <span class="status-text">Detecting displays...</span>
+                </span>
+                <span class="status-item" id="projection-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Ready</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Two Column Layout -->
+        <div class="two-column-layout">
+            <!-- Left Column: Controls -->
+            <div class="left-column">
+                <!-- Universal Input Section -->
+                <section class="section compact">
+                    <div class="section-header">
+                        <h2 class="section-title">Hymn / Slides / URL</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="form-row">
+                            <input
+                                type="text"
+                                class="input-text"
+                                id="universal-input"
+                                placeholder="Hymn ID (A01, C002), Google Slides URL, or webpage URL..."
+                                spellcheck="false"
+                            >
+                        </div>
+                        <div class="button-group" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-toggle" id="universal-toggle-btn" data-state="hidden" data-window="universal">
+                                    <span class="btn-icon">▶</span>
+                                    <span class="btn-text">Project</span>
+                                </button>
+                                <button class="btn btn-primary btn-small" id="universal-reload-btn" style="display: none;">
+                                    <span class="btn-icon">🔄</span>
+                                    Reload
+                                </button>
+                            </div>
+                            <button class="btn btn-toggle" id="agenda-toggle-btn" data-state="hidden" data-window="agenda">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">Agenda</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bible Verses Section -->
+                <section class="section compact">
+                    <div class="section-header">
+                        <h2 class="section-title">Bible Verses</h2>
+                    </div>
+                    <div class="section-content">
+                        <!-- Font Size Controls (First Row) -->
+                        <div class="form-row no-gap">
+                            <div class="select-input-group">
+                                <span class="input-label-inline">中文:</span>
+                                <select class="input-select input-select-compact" id="chinese-size">
+                                    <option value="30">30px</option>
+                                    <option value="32">32px</option>
+                                    <option value="34">34px</option>
+                                    <option value="36">36px</option>
+                                    <option value="38">38px</option>
+                                    <option value="40">40px</option>
+                                    <option value="42">42px</option>
+                                    <option value="44">44px</option>
+                                    <option value="46">46px</option>
+                                    <option value="48" selected>48px</option>
+                                    <option value="50">50px</option>
+                                    <option value="52">52px</option>
+                                    <option value="54">54px</option>
+                                    <option value="56">56px</option>
+                                    <option value="58">58px</option>
+                                    <option value="60">60px</option>
+                                    <option value="64">64px</option>
+                                    <option value="68">68px</option>
+                                    <option value="72">72px</option>
+                                    <option value="76">76px</option>
+                                    <option value="80">80px</option>
+                                </select>
+                            </div>
+                            <div class="select-input-group">
+                                <span class="input-label-inline">English:</span>
+                                <select class="input-select input-select-compact" id="english-size">
+                                    <option value="30">30px</option>
+                                    <option value="32">32px</option>
+                                    <option value="34">34px</option>
+                                    <option value="36">36px</option>
+                                    <option value="38">38px</option>
+                                    <option value="40">40px</option>
+                                    <option value="42">42px</option>
+                                    <option value="44" selected>44px</option>
+                                    <option value="46">46px</option>
+                                    <option value="48">48px</option>
+                                    <option value="50">50px</option>
+                                    <option value="52">52px</option>
+                                    <option value="54">54px</option>
+                                    <option value="56">56px</option>
+                                    <option value="58">58px</option>
+                                    <option value="60">60px</option>
+                                    <option value="64">64px</option>
+                                    <option value="68">68px</option>
+                                    <option value="72">72px</option>
+                                    <option value="76">76px</option>
+                                    <option value="80">80px</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Version Selection (Second Row) -->
+                        <div class="form-row">
+                            <div class="checkbox-group compact">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="version" value="cuv" class="checkbox-input" id="version-cuv" checked>
+                                    <span class="checkbox-text">和合本</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="version" value="kjv" class="checkbox-input" id="version-kjv">
+                                    <span class="checkbox-text">KJV</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="version" value="nas" class="checkbox-input" id="version-nas">
+                                    <span class="checkbox-text">NASB</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="version" value="niv" class="checkbox-input" id="version-niv">
+                                    <span class="checkbox-text">NIV</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="version" value="dby" class="checkbox-input" id="version-dby">
+                                    <span class="checkbox-text">Darby</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Verse and Book Input (Third Row) -->
+                        <div class="form-row no-gap">
+                            <input
+                                type="text"
+                                class="input-text"
+                                id="verse-input"
+                                placeholder="Ch:Verse (e.g., 3:16)"
+                                spellcheck="false"
+                                style="flex: 1.5;"
+                            >
+                            <input
+                                type="text"
+                                class="input-text"
+                                id="book-select"
+                                list="book-list"
+                                placeholder="Type to search book..."
+                                spellcheck="false"
+                                style="flex: 2;"
+                            >
+                            <datalist id="book-list">
+                                <!-- Will be populated by Python bridge -->
+                            </datalist>
+                            <button class="btn btn-icon-only" id="verse-clear-btn" title="Clear">
+                                ✕
+                            </button>
+                            <button class="btn btn-icon-only" id="verse-preview-btn" title="Load chapter">
+                                👁
+                            </button>
+                        </div>
+
+                        <!-- Bible Projection Buttons -->
+                        <div class="button-group">
+                            <button class="btn btn-toggle" id="bible-toggle-btn" data-state="hidden" data-window="bible">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">Project</span>
+                            </button>
+                            <button class="btn btn-primary btn-small" id="bible-reload-btn" style="display: none;">
+                                <span class="btn-icon">🔄</span>
+                                Reload
+                            </button>
+                            <select class="input-select" id="verse-history-select" style="width: 100px; font-size: 0.875rem;">
+                                <option value="">History...</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Google Meet Section -->
+                <section class="section compact">
+                    <div class="section-header">
+                        <h2 class="section-title">Google Meet</h2>
+                    </div>
+                    <div class="section-content">
+                        <!-- Meet Link Input -->
+                        <div class="form-row">
+                            <input
+                                type="text"
+                                class="input-text"
+                                id="meet-url-input"
+                                placeholder="Google Meet URL..."
+                                spellcheck="false"
+                            >
+                        </div>
+
+                        <!-- Meet Action Buttons -->
+                        <div class="button-group">
+                            <button class="btn btn-primary" id="meet-auto-join-btn">
+                                <span class="btn-icon">🤖</span>
+                                Auto Join & Share
+                            </button>
+                            <button class="btn btn-secondary" id="meet-manual-join-btn">
+                                <span class="btn-icon">🌐</span>
+                                Manual Join
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Chapter Preview -->
+            <div class="right-column">
+                <div class="chapter-preview-container full-height">
+                    <div class="chapter-preview-header">
+                        <h3 class="chapter-preview-title">Chapter Preview</h3>
+                        <div class="chapter-preview-nav">
+                            <button class="btn btn-small" id="prev-chapter-btn" title="Previous chapter">
+                                ◀
+                            </button>
+                            <span class="chapter-preview-info" id="chapter-info">
+                                Click 👁 to load
+                            </span>
+                            <button class="btn btn-small" id="next-chapter-btn" title="Next chapter">
+                                ▶
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chapter-preview-content" id="chapter-preview">
+                        <div class="chapter-preview-empty">
+                            <p class="empty-message">No chapter loaded</p>
+                            <p class="empty-hint">Select a book and chapter, then click 👁</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="footer-text">NCF Bible and Hymn Projector v2.0</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="toggle.js"></script>
+    <!-- Additional scripts will be loaded here in Phase 2 -->
+    <!-- <script src="components/bridge.js"></script> -->
+    <!-- <script src="components/url_controller.js"></script> -->
+    <!-- <script src="components/slides_controller.js"></script> -->
+    <!-- <script src="components/bible_controller.js"></script> -->
+    <!-- <script src="app.js"></script> -->
+    <script src="keyboard-shortcuts.js"></script>
+</body>
+</html>

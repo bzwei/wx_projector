@@ -1,3 +1,0 @@
-wxpython==4.2.3
-screeninfo==0.8.1
-pywin32==306 

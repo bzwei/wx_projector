@@ -24,6 +24,7 @@ MANIFEST
 
 # Virtual Environment
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -50,8 +51,38 @@ Thumbs.db
 *.tmp
 backup_*/
 *_backup.py
+
+# Session/development notes (not needed for distribution)
+CLAUDE.md
+SESSION*.md
+PHASE*.md
+QUICKSTART.txt
+*_SESSION*.md
+TESTING_GUIDE.md
+HOW_TO_TEST.md
+DEBUG_RUN.sh
+TEST_*.md
+LAYOUT_*.md
+GOOGLE_MEET_*.md
+INFINITE_SCROLL*.md
+HYBRID_*.md
+SETTINGS_*.md
+SPECIFICATION_*.md
+ARROW_KEY*.md
+TEXT_VISIBILITY*.md
+FINAL_SESSION*.md
+CURRENT_SESSION*.md
+NEXT_SESSION*.md
+
+# Old/archived versions
+old-version/
+
+# Test files
 test_*.py
 debug_*.py
+test_*.sh
+tests/__pycache__/
+simple_window_test.py
 
 # Bible data files (optional - uncomment if you want to exclude)
 # books/
@@ -59,3 +90,6 @@ debug_*.py
 # Local configuration
 config.local.*
 settings.local.*
+
+# Generated macOS app bundle (user-specific)
+*.app/
