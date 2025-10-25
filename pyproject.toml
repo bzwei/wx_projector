@@ -2,7 +2,7 @@
 name = "webpage-projector"
 version = "2.0.0"
 description = "Desktop application for projecting Bible verses, hymns, and web content to a secondary display"
-readme = "README_PHASE2.md"
+readme = "README.md"
 requires-python = ">=3.12"
 authors = [
     { name = "Bill Wei" }
