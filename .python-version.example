@@ -1,0 +1,12 @@
+# Example .python-version file
+# This file is used by pyenv and uv to select the Python version
+#
+# The project requires Python >=3.12 (see pyproject.toml)
+# You can use any version 3.12 or higher (3.12, 3.13, etc.)
+#
+# To use this:
+# 1. Copy this file to .python-version (without .example)
+# 2. Change the version to match what you have installed
+# 3. The .python-version file is gitignored, so it won't conflict across machines
+
+3.12
