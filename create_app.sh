@@ -31,55 +31,52 @@ cat > "$SCRIPT_DIR/$BUNDLE_NAME/Contents/MacOS/webpage_projector" << 'LAUNCHER_E
 #!/bin/bash
 # Webpage Projector Launcher
 
-# Redirect all output to log file
-exec >> ~/webpage_projector_launch.log 2>&1
-echo "=== Launch attempt at $(date) ==="
-
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-echo "Script directory: $SCRIPT_DIR"
-
 # Go up to the project root (3 levels up from MacOS folder)
 PROJECT_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
-echo "Project directory: $PROJECT_DIR"
+
+# Setup logging directory
+LOG_DIR="$HOME/Library/Logs/Projector"
+mkdir -p "$LOG_DIR"
+
+# Log launcher activity (lightweight)
+{
+    echo "=== $(date) ==="
+    echo "Launching from: $PROJECT_DIR"
+} >> "$LOG_DIR/launch.log"
 
 # Change to project directory
 cd "$PROJECT_DIR" || {
+    echo "ERROR: Failed to cd to $PROJECT_DIR" >> "$LOG_DIR/launch.log"
     osascript -e 'display dialog "Failed to change to project directory" buttons {"OK"} default button "OK" with icon stop with title "Projector"'
     exit 1
 }
 
 # Check if virtual environment exists
 if [ ! -d ".venv" ]; then
-    echo "ERROR: Virtual environment not found at $PROJECT_DIR/.venv"
+    echo "ERROR: Virtual environment not found" >> "$LOG_DIR/launch.log"
     osascript -e 'display dialog "Virtual environment not found. Please run install.sh first." buttons {"OK"} default button "OK" with icon stop with title "Projector"'
     exit 1
 fi
 
-echo "Virtual environment found"
-echo "Activating virtual environment..."
+# Activate and launch
 source .venv/bin/activate
 
-# Check Python architecture
-echo "Python executable: $(which python)"
-echo "Python version: $(python --version)"
-echo "Python architecture: $(python -c 'import platform; print(platform.machine())')"
-echo "System architecture: $(uname -m)"
-
-echo "Launching Python application..."
-# Use the venv python directly to ensure correct architecture
-.venv/bin/python src/main.py >> ~/webpage_projector.log 2>&1 &
+# Launch in background, redirect output to log
+.venv/bin/python src/main.py >> "$LOG_DIR/app.log" 2>&1 &
+APP_PID=$!
 
 # Give it a moment to start
 sleep 1
 
-# Check if it's still running
-if ps -p $! > /dev/null; then
-    echo "Application started successfully (PID: $!)"
+# Verify it started
+if ps -p $APP_PID > /dev/null; then
+    echo "Started successfully (PID: $APP_PID)" >> "$LOG_DIR/launch.log"
     exit 0
 else
-    echo "ERROR: Application failed to start"
-    osascript -e 'display dialog "Application failed to start. Check ~/webpage_projector.log for details." buttons {"OK"} default button "OK" with icon stop with title "Projector"'
+    echo "ERROR: Failed to start" >> "$LOG_DIR/launch.log"
+    osascript -e 'display dialog "Application failed to start. Check logs in ~/Library/Logs/Projector/" buttons {"OK"} default button "OK" with icon stop with title "Projector"'
     exit 1
 fi
 LAUNCHER_EOF
