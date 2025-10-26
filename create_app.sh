@@ -113,6 +113,13 @@ cat > "$SCRIPT_DIR/$BUNDLE_NAME/Contents/Info.plist" << 'PLIST_EOF'
     <string>10.15</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
+    <key>LSRequiresNativeExecution</key>
+    <true/>
 </dict>
 </plist>
 PLIST_EOF
