@@ -66,6 +66,26 @@ echo "Activating virtual environment..."
 source .venv/bin/activate
 echo ""
 
+# Check architecture compatibility
+echo "Checking system architecture..."
+SYSTEM_ARCH=$(uname -m)
+PYTHON_ARCH=$(python3 -c 'import platform; print(platform.machine())')
+echo "System architecture: $SYSTEM_ARCH"
+echo "Python architecture: $PYTHON_ARCH"
+
+if [ "$SYSTEM_ARCH" != "$PYTHON_ARCH" ]; then
+    echo "⚠️  WARNING: Architecture mismatch detected!"
+    echo "   System is $SYSTEM_ARCH but Python is $PYTHON_ARCH"
+    echo "   This may cause issues with binary dependencies like wxPython"
+    echo ""
+    if [ "$SYSTEM_ARCH" = "arm64" ] && [ "$PYTHON_ARCH" = "x86_64" ]; then
+        echo "   You're running x86_64 Python on Apple Silicon via Rosetta"
+        echo "   Recommendation: Install native arm64 Python from python.org"
+        echo ""
+    fi
+fi
+echo ""
+
 # Install dependencies
 echo "Installing dependencies..."
 uv pip install -e .

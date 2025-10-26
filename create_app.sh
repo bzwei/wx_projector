@@ -60,9 +60,15 @@ echo "Virtual environment found"
 echo "Activating virtual environment..."
 source .venv/bin/activate
 
+# Check Python architecture
+echo "Python executable: $(which python)"
+echo "Python version: $(python --version)"
+echo "Python architecture: $(python -c 'import platform; print(platform.machine())')"
+echo "System architecture: $(uname -m)"
+
 echo "Launching Python application..."
-# Run in background so the launcher can exit
-python src/main.py >> ~/webpage_projector.log 2>&1 &
+# Use the venv python directly to ensure correct architecture
+.venv/bin/python src/main.py >> ~/webpage_projector.log 2>&1 &
 
 # Give it a moment to start
 sleep 1
