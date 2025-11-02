@@ -128,6 +128,35 @@ class ProjectionWindow(wx.Frame):
         except:
             pass  # Ignore errors if window/webview no longer exists
 
+    def _convert_google_slides_url(self, url):
+        """
+        Convert Google Slides edit mode URL to presentation mode URL
+
+        Args:
+            url: Original URL (may be edit or presentation mode)
+
+        Returns:
+            Converted URL in presentation mode if it's a Google Slides URL, otherwise original URL
+        """
+        import re
+
+        # Pattern to match Google Slides URLs in edit mode
+        # Example: https://docs.google.com/presentation/d/PRESENTATION_ID/edit...
+        edit_pattern = r'https://docs\.google\.com/presentation/d/([a-zA-Z0-9_-]+)/edit'
+
+        match = re.search(edit_pattern, url)
+        if match:
+            presentation_id = match.group(1)
+            # Convert to presentation mode URL
+            presentation_url = f'https://docs.google.com/presentation/d/{presentation_id}/present'
+            print(f"[{self.window_name}Window] Detected Google Slides edit URL, converting to presentation mode")
+            print(f"[{self.window_name}Window]   Original: {url}")
+            print(f"[{self.window_name}Window]   Converted: {presentation_url}")
+            return presentation_url
+
+        # If it's already in presentation mode or not a Google Slides URL, return as-is
+        return url
+
     def show_url(self, url, force_reload=False):
         """
         Show a URL/webpage/hymn/slides in the projection window
@@ -139,6 +168,9 @@ class ProjectionWindow(wx.Frame):
         # Ensure URL has protocol
         if not url.startswith(('http://', 'https://', 'file://')):
             url = 'https://' + url
+
+        # Auto-convert Google Slides URLs to presentation mode
+        url = self._convert_google_slides_url(url)
 
         # Reload if URL changed OR if force_reload is True
         if self.current_url != url or force_reload:
